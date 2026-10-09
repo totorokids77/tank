@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보카랜드 수호대 - 단어 결정을 되찾아라!</title>
+<style>
+  * { box-sizing: border-box; font-family: 'Pretendard','Malgun Gothic',sans-serif; }
+  body { background:#0b1220; color:#fff; margin:0; padding:14px; display:flex; flex-direction:column; align-items:center; }
+  h1 { margin:6px 0 12px; font-size:24px; color:#f1c40f; text-shadow:2px 2px 4px #000; text-align:center; }
+  .topbar { width:min(800px,100%); display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .topbar .tip { font-size:12px; color:#9fb0c3; flex:1; min-width:220px; }
+  button { cursor:pointer; border:none; border-radius:8px; font-weight:bold; font-size:14px; padding:8px 14px; background:#2c3e50; color:#fff; }
+  button:hover { filter:brightness(1.2); }
+  .btn-primary { background:#e67e22; }
+  .btn-green { background:#27ae60; }
+  .game-box { position:relative; width:min(800px,100%); aspect-ratio:8/5; background:#0f172a; border:4px solid #f1c40f; border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.8); user-select:none; }
+  #gameCanvas { width:100%; height:100%; display:block; cursor:crosshair; }
+  #hud { position:absolute; top:8px; left:8px; right:8px; display:none; justify-content:space-between; align-items:flex-start; gap:8px; pointer-events:none; }
+  .hud-left, .hud-right { background:rgba(0,0,0,.65); border:2px solid #f39c12; border-radius:10px; padding:6px 10px; font-weight:bold; font-size:15px; min-width:92px; text-align:center; }
+  .hud-left { border-color:#e74c3c; }
+  #quest { flex:1; background:rgba(0,0,0,.8); border:2px solid #00e5c0; border-radius:10px; padding:5px 12px; text-align:center; }
+  #quest .lab { font-size:11px; color:#7ff; }
+  #questText { font-size:16px; font-weight:bold; color:#fff; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  #overlay { position:absolute; inset:0; display:none; overflow:auto; }
+  #overlay.center { background:rgba(5,10,25,.88); align-items:flex-start; justify-content:center; }
+  #overlay.dim { background:rgba(0,0,0,.45); align-items:flex-end; }
+  .menu { width:100%; padding:10px 14px; text-align:center; }
+  .menu h2 { margin:4px 0; color:#f1c40f; font-size:22px; }
+  .menu p { margin:2px 0 8px; font-size:13px; color:#c8d3e0; }
+  .grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:8px; }
+  .stage { display:flex; flex-direction:column; align-items:center; gap:1px; padding:5px 2px; background:#1f2d3d; border:2px solid #34495e; border-radius:8px; font-size:11px; }
+  .stage .s-emoji { font-size:22px; }
+  .stage .s-name { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .stage .s-star { color:#f1c40f; font-size:11px; letter-spacing:1px; }
+  .stage.cleared { border-color:#27ae60; }
+  .dlg-full { width:100%; height:100%; display:flex; align-items:flex-end; padding:12px; cursor:pointer; }
+  .dialog { width:100%; background:rgba(8,14,30,.95); border:3px solid #f1c40f; border-radius:14px; padding:12px 14px; display:flex; gap:14px; align-items:center; min-height:110px; }
+  .portrait { font-size:54px; width:80px; height:80px; flex:none; display:flex; align-items:center; justify-content:center; background:#1c2a45; border-radius:50%; border:3px solid #f39c12; }
+  .dname { color:#f1c40f; font-weight:bold; font-size:15px; margin-bottom:4px; }
+  .dtext { font-size:17px; line-height:1.45; min-height:50px; }
+  .dnext { text-align:right; font-size:11px; color:#8fa3bd; }
+  .panel { width:min(560px,94%); margin:16px auto; background:rgba(8,14,30,.96); border:3px solid #f1c40f; border-radius:14px; padding:14px 18px; text-align:center; }
+  .panel h2 { margin:2px 0 6px; color:#f1c40f; }
+  .stars { font-size:34px; color:#f1c40f; letter-spacing:4px; }
+  .panel p { margin:4px 0; font-size:14px; color:#dbe6f3; }
+  .review { text-align:left; background:#13203a; border-radius:8px; padding:8px 12px; margin:8px 0; max-height:130px; overflow:auto; font-size:13px; }
+  .review h3 { margin:0 0 4px; font-size:14px; color:#ff9f43; }
+  .review li { margin:2px 0; }
+  .btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .study-panel { width:min(800px,100%); margin-top:14px; background:#1b2838; border-radius:10px; padding:12px 14px; }
+  details summary { cursor:pointer; font-weight:bold; color:#f1c40f; }
+  .study-tools { display:flex; gap:8px; align-items:center; margin:10px 0 4px; flex-wrap:wrap; }
+  select { padding:7px 10px; border-radius:6px; border:none; font-size:14px; }
+  .word-table { width:100%; border-collapse:collapse; margin-top:8px; }
+  .word-table th, .word-table td { border:1px solid #455a64; padding:6px 10px; text-align:left; font-size:13px; }
+  .word-table th { background:#34495e; color:#f1c40f; }
+</style>
+</head>
+<body>
+
+<h1>🛡️ 보카랜드 수호대 · 단어 결정을 되찾아라!</h1>
+
+<div class="topbar">
+  <button id="btnMap">🗺️ 지도</button>
+  <button id="btnSound">🔊 소리 켬</button>
+  <span class="tip">← → / A D / 마우스 = 이동 · 스페이스바 / 클릭 = 발사 · Esc = 일시정지</span>
+</div>
+
+<div class="game-box" id="gameBox">
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <div id="hud">
+    <div class="hud-left" id="hudHearts">❤️❤️❤️❤️❤️</div>
+    <div id="quest"><div class="lab">🎯 이 뜻의 영어 단어 몬스터를 쏴라!</div><div id="questText">-</div></div>
+    <div class="hud-right"><div id="hudScore">⭐ 0</div><div id="hudCombo" style="color:#ff9f43">&nbsp;</div></div>
+  </div>
+  <div id="overlay"></div>
+</div>
+
+<div class="study-panel">
+  <details>
+    <summary>📖 단어 공부하기 (클릭하여 열기)</summary>
+    <div class="study-tools">
+      <select id="studySelect"></select>
+      <button class="btn-green" id="btnCsv">📥 단어장 다운로드 (CSV)</button>
+    </div>
+    <table class="word-table">
+      <thead><tr><th>번호</th><th>단어 (Word)</th><th>뜻 (Meaning)</th></tr></thead>
+      <tbody id="wordListBody"></tbody>
+    </table>
+  </details>
+</div>
+
+<script>
+// ===== 단어 데이터 (35 Unit, 874단어) =====
+const rawVocabData = {"unit 1": [{"w": "age", "m": "n. 나이, 시대 ｜ v. 나이를 먹다, 늙다"}, {"w": "member", "m": "n. (집단의) 일원, 회원"}, {"w": "birthday", "m": "n. 생일, 탄생일, 창립일"}, {"w": "grow", "m": "v. 커지다, 자라다, 재배하다"}, {"w": "child", "m": "n. 아이, 어린이, (부모에 대하여) 자식"}, {"w": "childhood", "m": "n. 어린 시절, 유년 시절"}, {"w": "sibling", "m": "n. 형제, 자매, 형제자매"}, {"w": "life", "m": "n. 인생, 생활, 생명, 생물"}, {"w": "teenager", "m": "n. 십대, 청소년"}, {"w": "death", "m": "n. 죽음, 사망"}, {"w": "pet", "m": "n. 애완동물, 총애 받는 사람  v. (동물·아이를 다정하게) 어루만지다"}, {"w": "housewife", "m": "n. 주부, 전업주부"}, {"w": "important", "m": "a. 중요한, 주요한, 소중한"}, {"w": "respect", "m": "v. 존경하다, 존중하다 ｜ n. 존경, 존중"}, {"w": "marry", "m": "v. ~와 결혼하다"}, {"w": "parent", "m": "n. 어버이"}, {"w": "relative", "m": "n. 친척, 인척"}, {"w": "single", "m": "a. 하나의, 독신의, 미혼의"}, {"w": "couple", "m": "n. 한 쌍, 부부"}, {"w": "care", "m": "n. 보살핌, 주의, 근심"}, {"w": "grow up", "m": "성장하다, 자라다"}, {"w": "a couple of", "m": "둘의, 몇 개의"}, {"w": "get married to", "m": "~와 결혼하다"}, {"w": "get together", "m": "모이다, 만나다"}, {"w": "take care of", "m": "~을 돌보다"}], "unit 2": [{"w": "friendship", "m": "n. 우정, 친선"}, {"w": "best", "m": "a. 가장 좋은, 최고의"}, {"w": "share", "m": "v. 공유하다, 함께하다 ｜ n. 몫, 일부분"}, {"w": "dear", "m": "a. 친애하는, 소중한"}, {"w": "conversation", "m": "n. 회화, 대화"}, {"w": "appointment", "m": "n. (만날) 약속, 지정, 임명"}, {"w": "favor", "m": "n. 호의, 돌봄, 부탁"}, {"w": "close", "m": "a. 친한, (시간·거리가) 가까운  v. (문 등을) 닫다"}, {"w": "popular", "m": "a. 인기 있는, 대중적인"}, {"w": "trust", "m": "v. 신뢰하다, 믿다 ｜ n. 신뢰, 신임"}, {"w": "promise", "m": "n. 약속 ｜ v. 약속하다"}, {"w": "common", "m": "a. 공통의, 일반의, 보통의"}, {"w": "problem", "m": "n. 문제, 어려운 사정, 고민"}, {"w": "together", "m": "ad. 함께, 같이"}, {"w": "pen pal", "m": "n. 펜팔, 편지 친구"}, {"w": "introduce", "m": "v. 소개하다, 도입하다"}, {"w": "join", "m": "v. ~에 가입하다, 합류하다, 결합하다"}, {"w": "club", "m": "n. 클럽, 동호회"}, {"w": "real", "m": "a. 진짜의, 현실의"}, {"w": "welcome", "m": "v. 환영하다 ｜ a. 환영받는 ｜ n. 환영, 환대"}, {"w": "have fun", "m": "재미있게 놀다, 즐기다"}, {"w": "make friends (with)", "m": "~와 친구가 되다, ~를 사귀다"}, {"w": "get along (well) with", "m": "~와 잘 지내다"}, {"w": "hang out with", "m": "~와 어울리다, ~와 많은 시간을 보내다"}, {"w": "over and over (again)", "m": "반복해서, 여러 번 되풀이하여"}], "unit 3": [{"w": "able", "m": "a. ~할 수 있는"}, {"w": "luck", "m": "n. 행운, 운, 재수"}, {"w": "work", "m": "v. 일하다 ｜ n. 일, 노동"}, {"w": "hardworking", "m": "a. 열심히 일하는, 근면한"}, {"w": "pilot", "m": "n. (비행기) 조종사"}, {"w": "stewardess", "m": "n. (비행기) 여승무원, 스튜어디스"}, {"w": "job", "m": "n. 직업, 일"}, {"w": "manager", "m": "n. 지배인, 관리인"}, {"w": "message", "m": "n. 전달 내용, 전언, 메시지"}, {"w": "professional", "m": "a. 직업의, 전문적인 n. 전문가, 직업[프로] 선수"}, {"w": "engineer", "m": "n. 기술자, 엔지니어"}, {"w": "farmer", "m": "n. 농부, 농민"}, {"w": "fault", "m": "n. 실수, 잘못, 결점"}, {"w": "soldier", "m": "n. 군인, 병사"}, {"w": "officer", "m": "n. 공무원, 관리, 경관"}, {"w": "designer", "m": "n. 디자이너, 설계자"}, {"w": "businessperson", "m": "n. 사업가, 실업가"}, {"w": "company", "m": "n. 회사"}, {"w": "lawyer", "m": "n. 변호사, 법률가"}, {"w": "programmer", "m": "n. 프로그램 작성자, 프로그래머"}, {"w": "be good[poor] at", "m": "~에 능숙하다[서투르다]"}, {"w": "make money", "m": "돈을 벌다"}, {"w": "hold on", "m": "(전화상으로) 기다리다"}, {"w": "leave a message", "m": "메시지를 남기다"}, {"w": "get on[off]", "m": "~ (버스 등에) 올라타다[내리다]"}], "unit 4": [{"w": "active", "m": "a. 활동적인, 적극적인"}, {"w": "shy", "m": "a. 부끄러워하는, 수줍은"}, {"w": "calm", "m": "a. 조용한, 침착한, 고요한  v. (기분 등을) 가라앉히다"}, {"w": "clever", "m": "a. 영리한, 똑똑한, 재치 있는"}, {"w": "diligent", "m": "a. 부지런한, 근면한"}, {"w": "lazy", "m": "a. 게으른, 나태한, 일하기 싫어하는"}, {"w": "wise", "m": "a. 현명한, 지혜로운"}, {"w": "courage", "m": "n. 용기, 대담함"}, {"w": "brave", "m": "a. 용감한, 늠름한, 두려움을 모르는"}, {"w": "forget", "m": "v. 잊다, 생각이 나지 않다"}, {"w": "remember", "m": "v. 기억하다, 생각해내다"}, {"w": "friendly", "m": "a. 친절한, 다정한, 우정 어린"}, {"w": "strict", "m": "a. 엄격한, 엄한, 엄밀한"}, {"w": "serious", "m": "a. 진지한, 심각한, 중대한"}, {"w": "honest", "m": "a. 정직한"}, {"w": "rude", "m": "a. 버릇없는, 무례한"}, {"w": "polite", "m": "a. 공손한, 예의 바른"}, {"w": "warm-hearted", "m": "a. 마음씨가 따뜻한, 친절한"}, {"w": "curious", "m": "a. 궁금한, 호기심이 많은, 알고 싶은"}, {"w": "doubt", "m": "v. 의심하다, 수상히 여기다 ｜ n. 의심, 불신"}, {"w": "come[be] from", "m": "~ 출신이다"}, {"w": "calm down", "m": "진정하다, ~을 진정시키다"}, {"w": "be curious about", "m": "~을 궁금해 하다, ~에 대해 호기심이 있다"}, {"w": "come true", "m": "(꿈·소원 등이) 실현되다, 이루어지다"}, {"w": "speak well[ill] of", "m": "~를 좋게[나쁘게] 말하다, 칭찬[욕]하다"}], "unit 5": [{"w": "different", "m": "a. 다른, 여러 가지의"}, {"w": "similar", "m": "a. 비슷한, 닮은"}, {"w": "cute", "m": "a. 귀여운, 예쁜"}, {"w": "ugly", "m": "a. 못생긴, 추한"}, {"w": "strange", "m": "a. 이상한, 낯선, 색다른"}, {"w": "type", "m": "n. 유형, 종류 ｜ v. 타이프를 치다"}, {"w": "charming", "m": "a. 매력적인, 아름다운, 귀여운"}, {"w": "appearance", "m": "n. 외모, 겉모습, 출현"}, {"w": "good-looking", "m": "a. 잘생긴, 아름다운"}, {"w": "handsome", "m": "a. 잘생긴, 멋진"}, {"w": "attractive", "m": "a. 매력적인, 멋진"}, {"w": "quite", "m": "ad. 아주, 꽤"}, {"w": "beard", "m": "n. 턱수염"}, {"w": "straight", "m": "a. 곧은, 직선의 ｜ ad. 똑바로, 곧장"}, {"w": "blond", "m": "a. 금발의"}, {"w": "curly", "m": "a. 곱슬머리의, 곱슬곱슬한"}, {"w": "height", "m": "n. 높이, 키"}, {"w": "weight", "m": "n. 무게, 체중"}, {"w": "overweight", "m": "a. 비만의, 과체중의 ｜ n. 비만, 과체중"}, {"w": "heavy", "m": "a. 무거운, 뚱뚱한"}, {"w": "be different", "m": "다르다"}, {"w": "look like", "m": "~ 닮다, ~ 같다"}, {"w": "gain[lose] weight", "m": "살이 찌다[빠지다]"}, {"w": "a little", "m": "약간"}, {"w": "laugh at", "m": "~을 비웃다[놀리다]"}], "unit 6": [{"w": "feel", "m": "v. 느끼다, 기분이 ~하다"}, {"w": "lonely", "m": "a. 외로운, 고독한"}, {"w": "angry", "m": "a. 화난, 성난"}, {"w": "sure", "m": "a. 틀림없는, 확신하고, 확실히 아는"}, {"w": "surprising", "m": "a. 놀라운, 놀랄 만한"}, {"w": "interesting", "m": "a. 재미있는, 흥미로운"}, {"w": "boring", "m": "a. 지루한, 따분한, 재미없는"}, {"w": "exciting", "m": "a. 흥분시키는, 신나는, 재미있는"}, {"w": "afraid", "m": "a. 두려운, 겁내는, 무서워하는"}, {"w": "nervous", "m": "a. 긴장된, 불안한, 신경과민의"}, {"w": "scared", "m": "a. 무서워하는, 겁을 먹은"}, {"w": "disappoint", "m": "v. 실망시키다, 기대에 어긋나다"}, {"w": "embarrass", "m": "v. 당황하다, 난처하게 하다"}, {"w": "pleased", "m": "a. 기뻐하는, 만족한"}, {"w": "pleasure", "m": "n. 기쁨, 즐거움, 만족"}, {"w": "hide", "m": "v. 숨기다, 감추다"}, {"w": "crazy", "m": "a. 미쳐있는, 열광적인, 미친"}, {"w": "upset", "m": "v. 당황하게 하다, 뒤엎다 ｜ a. 기분이 상한, 화난"}, {"w": "worry", "m": "v. 걱정하다, 불안하게 만들다 ｜ n. 걱정, 근심"}, {"w": "anxious", "m": "a. 걱정하는, 불안한, 열망하는"}, {"w": "be interested in", "m": "~에 흥미가[관심이] 있다"}, {"w": "be afraid of", "m": "~을 두려워하다"}, {"w": "be crazy about", "m": "~에 열중[열광]하다, ~에 빠져 있다"}, {"w": "feel like", "m": "~처럼 느끼다"}, {"w": "keep on", "m": "~계속하다"}], "unit 7": [{"w": "require", "m": "v. 필요하다, 요구하다"}, {"w": "bone", "m": "n. 뼈, 해골, 골격"}, {"w": "brain", "m": "n. 뇌, 두뇌, 수재"}, {"w": "breathe", "m": "v. 숨 쉬다, 호흡하다"}, {"w": "balance", "m": "n. 균형, 평균, 저울 ｜ v. 균형을 유지하다"}, {"w": "skin", "m": "n. 피부, 껍질, 가죽"}, {"w": "stomach", "m": "n. 위(胃), 배, 속"}, {"w": "finger", "m": "n. 손가락"}, {"w": "heart", "m": "n. 심장, 마음, 가슴"}, {"w": "mind", "m": "n. 마음, 정신, 지성"}, {"w": "gesture", "m": "n. 몸짓, 손짓"}, {"w": "voice", "m": "n. 목소리, 음성"}, {"w": "average", "m": "a. 평균의, 보통의 ｜ n. 평균 (수준)"}, {"w": "affect", "m": "v. 영향을 주다"}, {"w": "suddenly", "m": "ad. 갑자기, 순식간에"}, {"w": "blind", "m": "a. 눈 먼, 앞을 보지 못하는"}, {"w": "deaf", "m": "a. 귀머거리의, 소리를 듣지 못하는"}, {"w": "control", "m": "v. 통제하다, 지배하다, 관리하다  n. 통제, 지배, 관리"}, {"w": "relax", "m": "v. 긴장을 풀다, 쉬게 하다"}, {"w": "rest", "m": "n. 휴식, 안심 ｜ v. 쉬다"}, {"w": "take[have] a rest", "m": "쉬다"}, {"w": "get well[better]", "m": "회복되다"}, {"w": "in person", "m": "직접, 몸소"}, {"w": "stay up (late)", "m": "(늦게까지) 안 자다, 깨어 있다"}, {"w": "die of", "m": "~로 사망하다"}], "unit 8": [{"w": "sense", "m": "n. 감각, 의식 ｜ v. 느끼다, 감각으로 분별하다"}, {"w": "touch", "m": "v. 닿다, 만지다, 감동시키다, 연락을 하다  n. 접촉"}, {"w": "shout", "m": "v. 외치다, 소리치다 ｜ n. 큰소리, 환성"}, {"w": "seem", "m": "v. ~으로 보이다, ~인 것 같다"}, {"w": "smell", "m": "n. 냄새, 후각 ｜ v. 냄새 맡다"}, {"w": "listen", "m": "v. 듣다, 귀를 기울이다"}, {"w": "sound", "m": "n. 소리 ｜ v. 소리가 나다, 들리다 ｜ a. 건전한, 정상적인"}, {"w": "express", "m": "v. 표현하다, 나타내다 ｜ a. 빠른"}, {"w": "impress", "m": "v. 감명을 주다, (깊은) 인상을 주다"}, {"w": "noisy", "m": "a. 시끄러운"}, {"w": "sight", "m": "n. 시각, 시력, 경치"}, {"w": "glance", "m": "v. 흘긋 보다, 대충 훑어 읽다 ｜ n. 일견, 흘긋 봄"}, {"w": "taste", "m": "v. 맛보다, ~의 맛이 나다 ｜ n. 맛, 취미, 기호"}, {"w": "hard", "m": "a. 단단한, 딱딱한, 힘든 ｜ ad. 열심히, 부지런히"}, {"w": "catch", "m": "v. 잡다, 알아듣다, 이해하다"}, {"w": "notice", "m": "v. ~을 의식하다, 알아차리다 ｜ n. 주의, 경고(문), 공고(문)"}, {"w": "discover", "m": "v. (무엇의 존재를) 발견하다"}, {"w": "imagine", "m": "v. 상상하다, 생각하다, 추측하다"}, {"w": "guess", "m": "v. 추측하다, 알아맞히다"}, {"w": "experience", "m": "n. 경험, 경력 ｜ v. 경험하다, 느끼다"}, {"w": "make a noise", "m": "떠들다, 소란을 피우다"}, {"w": "keep[get] in touch with", "m": "~와 연락하다"}, {"w": "watch out", "m": "조심하다"}, {"w": "call out", "m": "~을 (큰소리로) 부르다"}, {"w": "(take a) look around", "m": "둘러보다"}], "unit 9": [{"w": "health", "m": "n. 건강, 보건"}, {"w": "diet", "m": "n. (치료·체중 조절을 위한) 식이요법, 다이어트,  일상의 음식물"}, {"w": "blood", "m": "n. 피, 혈액"}, {"w": "runny", "m": "a. (감기 등으로) 콧물[눈물]이 나는, 흐르기 잘하는"}, {"w": "cough", "m": "v. 기침하다 ｜ n. 기침, 헛기침"}, {"w": "ache", "m": "v. 아프다, 쑤시다 ｜ n. 아픔, 통증"}, {"w": "fever", "m": "n. 열, 고열, 열병"}, {"w": "sore", "m": "a. (상처가) 아픈, 따가운, 쑤시는 ｜ n. 상처, 종기"}, {"w": "patient", "m": "n. (특히 병원의 입원) 환자 ｜ a. 인내심이 있는,  잘 견디는"}, {"w": "hurt", "m": "v. 아프다, 상처 나다, 다치게 하다"}, {"w": "checkup", "m": "n. 건강진단, 검사, (기계 등의) 점검"}, {"w": "pain", "m": "n. 아픔, 고통, 통증"}, {"w": "injure", "m": "v. (특히 사고로) 부상을 입히다, 다치게 하다"}, {"w": "spread", "m": "v. 번지다, 퍼지다, 펼치다"}, {"w": "drug", "m": "n. 약, 약품, (불법적인) 약물"}, {"w": "disease", "m": "n. 병, 질병"}, {"w": "aid", "m": "n. 도움, 원조, 지원 ｜ v. 돕다, 원조하다"}, {"w": "medicine", "m": "n. 약, 내복약"}, {"w": "treat", "m": "v. 치료하다, 다루다, 대우하다"}, {"w": "recover", "m": "v. 회복하다, 낫다"}, {"w": "see a doctor", "m": "진찰을 받다"}, {"w": "be on a diet", "m": "다이어트 중이다"}, {"w": "have a headache[toothache]", "m": "두통[치통]이 있다"}, {"w": "good[bad] for", "m": "~에 좋은[나쁜]"}, {"w": "most of all", "m": "무엇보다도"}], "unit 10": [{"w": "color", "m": "n. 색, 색상, 컬러"}, {"w": "change", "m": "v. 바꾸다, 변하다, (옷을) 갈아입다 ｜ n. 변화, 변경"}, {"w": "dress", "m": "v. (옷을) 입다[입히다] ｜ n. 의복, 옷, (여자) 드레스"}, {"w": "style", "m": "n. (특히 옷 등의) 스타일, 형식"}, {"w": "fashion", "m": "n. 유행, 패션"}, {"w": "clothes", "m": "n. (복수) 옷, 의상, 의복"}, {"w": "clothing", "m": "n. (집합적) 의류"}, {"w": "suit", "m": "n. (남자 옷의) 한 벌 ｜ v. 어울리다, 적합하다"}, {"w": "uniform", "m": "n. 제복, 유니폼"}, {"w": "sneaker", "m": "n. (주로 복수형으로) 운동화"}, {"w": "shorts", "m": "n. (복수) 반바지, 짧은 바지"}, {"w": "pants", "m": "n. (복수) 바지"}, {"w": "closet", "m": "n. 옷장, 벽장"}, {"w": "drawer", "m": "n. 서랍, 장롱"}, {"w": "size", "m": "n. 크기, (옷 등의) 사이즈"}, {"w": "tight", "m": "a. 꽉 끼는, 답답한, 단단한"}, {"w": "loose", "m": "a. 느슨한, 헐렁한"}, {"w": "fit", "m": "v. ~에 맞다, 적합하다 ｜ a. 건강한, 적합한"}, {"w": "comfortable", "m": "a. 편한, 기분 좋은"}, {"w": "envy", "m": "v. 부러워하다, 질투하다 ｜ n. 질투, 선망"}, {"w": "put on", "m": "입다, 신다, (피부 등에) 바르다"}, {"w": "take off", "m": "벗다"}, {"w": "go out of fashion", "m": "유행이 지나다, 구식이 되다"}, {"w": "be dressed up", "m": "차려 입다"}, {"w": "at table", "m": "식사 중에, 식탁에 앉아"}], "unit 11": [{"w": "address", "m": "n. (우편물 등의) 주소, 번지"}, {"w": "switch", "m": "n. 스위치, 전환 ｜ v. 바꾸다, 전환하다"}, {"w": "apartment", "m": "n. 아파트   [영] flat (아파트)"}, {"w": "building", "m": "n. 건물, 건축"}, {"w": "rent", "m": "v. 빌리다, 임대하다 ｜ n. 집세, 임대료"}, {"w": "move", "m": "v. 움직이다, 이사하다, 감동시키다"}, {"w": "floor", "m": "n. (건물의) 층, 마루, 방바닥"}, {"w": "roof", "m": "n. 지붕, 옥상"}, {"w": "furniture", "m": "n. 가구, 비품, 세간"}, {"w": "condition", "m": "n. 상태, 조건, 건강 상태, 컨디션"}, {"w": "garage", "m": "n. 차고, 자동차 정비 공장"}, {"w": "chore", "m": "n. 집안일, 허드렛일"}, {"w": "mess", "m": "n. 어수선함, 불결함, 뒤죽박죽"}, {"w": "neighbor", "m": "n. 이웃 사람"}, {"w": "garbage", "m": "n. 쓰레기, 음식 찌꺼기"}, {"w": "place", "m": "n. 장소, 지역, 공간 ｜ v. 놓다, 두다"}, {"w": "nearby", "m": "ad. 근처에 ｜ a. 가까운"}, {"w": "mop", "m": "n. 대걸레 ｜ v. 대걸레로 닦다"}, {"w": "dig", "m": "v. (구멍 등을) 파다"}, {"w": "repair", "m": "v. 고치다, 수선하다"}, {"w": "turn on[off]", "m": "(TV·전등 등을) 켜다[끄다]"}, {"w": "pick up", "m": "~을 집어 들다, ~를 (차에) 태우러 가다"}, {"w": "in a good[bad] condition", "m": "상태가 좋은[나쁜]"}, {"w": "make one’s bed", "m": "침대를 정리하다"}, {"w": "take it easy", "m": "느긋하게 하다"}], "unit 12": [{"w": "appetite", "m": "n. 식욕, 입맛"}, {"w": "dessert", "m": "n. 후식, 디저트(식사의 마지막 코스)"}, {"w": "meal", "m": "n. 식사, 한 끼"}, {"w": "snack", "m": "n. 간식, 가벼운 식사"}, {"w": "grocery", "m": "n. 식료품 가게, 식품 잡화점"}, {"w": "chew", "m": "v. 씹다"}, {"w": "slice", "m": "n. 얇게 썬 조각 ｜ v. 얇게 썰다"}, {"w": "meat", "m": "n. 고기"}, {"w": "seafood", "m": "n. 해산물, 어패류 요리"}, {"w": "chopstick", "m": "n. (주로 복수형으로) 젓가락"}, {"w": "fresh", "m": "a. 신선한, 싱싱한, 새로운"}, {"w": "rot", "m": "v. 썩다, 부패하다"}, {"w": "delicious", "m": "a. 맛있는, 맛 좋은"}, {"w": "tasty", "m": "a. 맛있는, 감칠맛이 있는"}, {"w": "salty", "m": "a. (맛이) 짠, 소금기 있는"}, {"w": "spicy", "m": "a. (맛이) 매운, 양념을 넣은, 향긋한"}, {"w": "sweet", "m": "a. (맛이) 단, 달콤한, 기분 좋은 ｜ n. 단 것"}, {"w": "thirsty", "m": "a. 목마른"}, {"w": "hungry", "m": "a. 배고픈"}, {"w": "starve", "m": "v. 굶주리다, 굶어 죽다"}, {"w": "for dessert", "m": "디저트로, 후식으로"}, {"w": "go grocery shopping", "m": "시장 보러 가다, 식료품 쇼핑 가다"}, {"w": "lose one’s appetite", "m": "식욕[입맛]을 잃다"}, {"w": "all the time", "m": "항상"}, {"w": "be tired of", "m": "~에 싫증나다, 지치다"}], "unit 13": [{"w": "bowl", "m": "n. 공기, 사발, (우묵한) 그릇"}, {"w": "flour", "m": "n. 밀가루"}, {"w": "calorie", "m": "n. 칼로리, 열량"}, {"w": "tray", "m": "n. 쟁반, 쟁반 모양의 접시"}, {"w": "recipe", "m": "n. 요리법"}, {"w": "dish", "m": "n. 접시, 식기류, 요리"}, {"w": "prepare", "m": "v. 준비하다, 조리하다"}, {"w": "rinse", "m": "v. 헹구다, 씻어내다"}, {"w": "cook", "m": "v. 요리하다 ｜ n. 요리사"}, {"w": "bake", "m": "v. (빵 등을) 굽다"}, {"w": "boil", "m": "v. 끓다, 끓이다, 삶다"}, {"w": "burn", "m": "v. 타다, 태우다"}, {"w": "fry", "m": "v. 튀기다, 기름에 볶다"}, {"w": "mix", "m": "v. 섞다, 혼합하다"}, {"w": "order", "m": "n. 주문, 순서, 명령 ｜ v. 주문하다, 명령하다"}, {"w": "chef", "m": "n. 요리사, 주방장"}, {"w": "menu", "m": "n. 식단표, 메뉴"}, {"w": "sauce", "m": "n. 소스, 양념"}, {"w": "serve", "m": "v. 봉사하다, (식탁을) 차리다, (음식을) 제공하다"}, {"w": "medium", "m": "a. 중간의, 중간 정도 구워진 ｜ n. 중간, 매개물"}, {"w": "do[wash] the dishes", "m": "설거지를 하다"}, {"w": "take one’s order", "m": "주문을 받다"}, {"w": "go out and eat", "m": "외식하다"}, {"w": "set the table", "m": "상을 차리다"}, {"w": "at a time", "m": "따로 따로, 한 번에"}], "unit 14": [{"w": "next", "m": "a. 다음의, 이어지는, 뒤따르는"}, {"w": "once", "m": "ad. 한 번, 이전에, 일찍이"}, {"w": "twice", "m": "ad. 두 번, 2회"}, {"w": "always", "m": "ad. 항상, 언제나"}, {"w": "never", "m": "ad. 결코 ~ 아니다, 전에 ~한 적이 없다"}, {"w": "usually", "m": "ad. 보통, 일반적으로, 대개"}, {"w": "sometimes", "m": "ad. 때때로, 가끔"}, {"w": "daily", "m": "a. 매일의, 일상의 ｜ ad. 매일"}, {"w": "date", "m": "n. 날짜, 데이트(특히 이성과 만나는 약속)"}, {"w": "o’clock", "m": "ad. ~시"}, {"w": "second", "m": "n. (시간 단위의) 초 ｜ a. (순서상) 두 번째의, 둘째의"}, {"w": "minute", "m": "n. (시간 단위의) 분, 잠깐"}, {"w": "moment", "m": "n. 순간, 지금, 때, 시기"}, {"w": "midnight", "m": "n. 자정, 밤 12시, 한밤중"}, {"w": "noon", "m": "n. 정오, 낮 12시"}, {"w": "ago", "m": "ad. ~ 전에 ｜ a. ~ 전, ~ 이전"}, {"w": "past", "m": "n. 과거 ｜ a. 과거의, 지나간 ｜ prep. (시간이)  ~을 지나서"}, {"w": "present", "m": "n. 현재, 선물 ｜ a. 현재의, 출석한"}, {"w": "future", "m": "n. 미래, 앞날, 장래 ｜ a. 미래의"}, {"w": "someday", "m": "ad. 언젠가, 훗날에"}, {"w": "before long", "m": "오래지 않아, 곧"}, {"w": "just a moment[minute, second]", "m": "잠시만 (기다려라)"}, {"w": "for the first time", "m": "처음으로, 처음에"}, {"w": "in time", "m": "제 시간에, 시간에 늦지 않게"}, {"w": "be ready to", "m": "~할 준비가 되다"}], "unit 15": [{"w": "activity", "m": "n. 활동"}, {"w": "schedule", "m": "n. 시간표, 예정표, 스케줄"}, {"w": "diary", "m": "n. 일기, 일지"}, {"w": "matter", "m": "n. 문제, 일, 사건, 물질 ｜ v. 중요하다, 문제가 되다"}, {"w": "believe", "m": "v. 믿다"}, {"w": "suppose", "m": "v. 가정하다, 추측하다, 생각하다"}, {"w": "decide", "m": "v. 결심하다, 결정하다"}, {"w": "etiquette", "m": "n. 예절, 에티켓"}, {"w": "manner", "m": "n. (사람의) 태도, (일의) 방식, (복수형으로) 예의, 예절"}, {"w": "happen", "m": "v. 일어나다, 발생하다, 우연히 ~하다"}, {"w": "borrow", "m": "v. 빌리다"}, {"w": "lend", "m": "v. 빌려주다"}, {"w": "greet", "m": "v. ~에게 인사하다"}, {"w": "hurry", "m": "v. 서두르다, 허둥대다 ｜ n. 급함, 서두름"}, {"w": "leave", "m": "v. 남기다, 출발하다, 떠나다"}, {"w": "reach", "m": "v. 도착하다, 연락하다, 손을 뻗다"}, {"w": "pardon", "m": "n. 용서 ｜ v. 용서하다"}, {"w": "pick", "m": "v. 따다, 선택하다"}, {"w": "dream", "m": "n. 꿈 ｜ v. 꿈꾸다"}, {"w": "lie", "m": "n. 거짓말 ｜ v. 거짓말하다, 눕다"}, {"w": "be absent from", "m": "~에 결석하다, 결근하다"}, {"w": "be late for", "m": "~에 늦다, 지각하다"}, {"w": "make a decision", "m": "결심하다, 결정을 내리다"}, {"w": "keep a diary", "m": "일기[일지]를 쓰다"}, {"w": "on one’s way", "m": "~로 가는 도중에"}], "unit 16": [{"w": "festival", "m": "n. 축제, 제전"}, {"w": "ceremony", "m": "n. 식, 의식"}, {"w": "holiday", "m": "n. 휴일, 공휴일, 휴가"}, {"w": "special", "m": "a. 특별한, 특수한"}, {"w": "event", "m": "n. 행사, 사건"}, {"w": "movie", "m": "n. 영화"}, {"w": "candle", "m": "n. (양)초"}, {"w": "chance", "m": "n. 기회, 가능성, 운"}, {"w": "memory", "m": "n. 추억, 기억"}, {"w": "theater", "m": "n. 극장"}, {"w": "during", "m": "prep. ~ 동안 (내내)"}, {"w": "while", "m": "conj. ~하는 동안에 ｜ n. 잠깐, 잠시"}, {"w": "celebrate", "m": "v. 축하하다, 찬양하다"}, {"w": "congratulation", "m": "n. (주로 복수형으로) 축하"}, {"w": "vacation", "m": "n. 방학, 정기 휴가"}, {"w": "host", "m": "v. 개최하다, 접대하다 ｜ n. (손님을 접대하는) 주인"}, {"w": "invite", "m": "v. 초대하다"}, {"w": "concert", "m": "n. 연주회, 음악회"}, {"w": "contest", "m": "n. 경쟁, 대회, 콘서트"}, {"w": "photograph(= photo)", "m": "n. 사진"}, {"w": "hurry up", "m": "서두르다"}, {"w": "go on a picnic", "m": "소풍 가다"}, {"w": "go on vacation[holiday]", "m": "휴가를 얻다[가다]"}, {"w": "drop by", "m": "(잠시) 들르다, 방문하다"}, {"w": "have a[no] chance", "m": "가능성이[기회가] 있다[없다]"}], "unit 17": [{"w": "win", "m": "v. 이기다, 우승하다 ｜ n. 승리"}, {"w": "lose", "m": "v. 잃어버리다, (경기에서) 지다, 잃다"}, {"w": "exercise", "m": "v. 운동하다 ｜ n. 운동, 연습, 연습 문제"}, {"w": "favorite", "m": "a. 마음에 드는, 특히 좋아하는"}, {"w": "cheer", "m": "n. 환호, 갈채 ｜ v. 응원하다"}, {"w": "hobby", "m": "n. 취미"}, {"w": "sport", "m": "n. 스포츠, 운동, 경기"}, {"w": "fair", "m": "a. 공정한, 공평한, 아름다운"}, {"w": "match", "m": "n. 시합, 경쟁 상대, 성냥"}, {"w": "final", "m": "a. 마지막의, 최종의 ｜ n. 결승전"}, {"w": "score", "m": "n. 득점, 점수, 성적 ｜ v. 득점을 올리다"}, {"w": "athlete", "m": "n. (운동)선수, 스포츠맨"}, {"w": "coach", "m": "n. (경기의) 코치, 지도원"}, {"w": "teamwork", "m": "n. 팀워크, 협동 작업"}, {"w": "stretch", "m": "v. (몸 등을) 쭉 뻗다, 늘이다"}, {"w": "court", "m": "n. (테니스·농구 등의) 코트, 안뜰"}, {"w": "climb", "m": "v. 등반하다, 오르다"}, {"w": "collect", "m": "v. 수집하다, 모으다"}, {"w": "regularly", "m": "ad. 규칙적으로, 정기적으로"}, {"w": "gym", "m": "n. (학교 등의) 체육관, 헬스장"}, {"w": "take a picture", "m": "사진을 찍다"}, {"w": "win[lose] a game", "m": "시합에서 이기다[지다]"}, {"w": "have a good[bad] time", "m": "즐거운[힘든] 시간을 보내다"}, {"w": "have a good idea", "m": "좋은 생각이 떠오르다"}, {"w": "make up one’s mind", "m": "결심[결정]하다"}], "unit 18": [{"w": "brand", "m": "n. 상표, 브랜드"}, {"w": "gift", "m": "n. 선물, 기증품"}, {"w": "sale", "m": "n. 판매, 염가 판매"}, {"w": "supermarket", "m": "n. 슈퍼마켓"}, {"w": "clerk", "m": "n. (가게의) 점원, 사무원"}, {"w": "customer", "m": "n. 손님, 고객"}, {"w": "bookstore", "m": "n. 서점, 책방"}, {"w": "department", "m": "n. 부서, (백화점 등의) 매장"}, {"w": "shopping", "m": "n. 쇼핑, 물건 사기"}, {"w": "cost", "m": "v. (값이) ~이다, 들다 ｜ n. 비용, 경비, 값"}, {"w": "price", "m": "n. 가격, 값"}, {"w": "cash", "m": "n. 현금"}, {"w": "spend", "m": "v. (돈·시간 등을) 쓰다, 소비하다"}, {"w": "tag", "m": "n. 꼬리표, 태그"}, {"w": "cheap", "m": "a. (값이) 싼"}, {"w": "expensive", "m": "a. (값이) 비싼"}, {"w": "dollar", "m": "n. 달러(미국, 캐나다, 홍콩 등의 화폐 단위)"}, {"w": "pay", "m": "v. 치르다, 지불하다 ｜ n. 지불, 지급, 급료"}, {"w": "display", "m": "v. 전시하다, 진열하다, 보여주다 ｜ n. 전시, 진열"}, {"w": "wrap", "m": "v. 싸다, 포장하다"}, {"w": "go shopping", "m": "쇼핑하러 가다"}, {"w": "look for", "m": "~를 찾다"}, {"w": "ask for", "m": "~를 부탁하다, 요청하다"}, {"w": "over there", "m": "저기"}, {"w": "~ or so", "m": "~정도, 쯤"}], "unit 19": [{"w": "travel", "m": "v. (먼 곳으로) 여행하다, 이동하다 ｜ n. 여행, 이동"}, {"w": "trip", "m": "n. (짧은) 여행, (장사·직업상의) 여행"}, {"w": "airport", "m": "n. 공항"}, {"w": "flight", "m": "n. 비행, 비행기 여행"}, {"w": "attention", "m": "n. 주의, 주목, 돌봄"}, {"w": "fasten", "m": "v. 묶다, 고정하다"}, {"w": "gate", "m": "n. 문, (공항의) 탑승구"}, {"w": "foreign", "m": "a. 외국의"}, {"w": "tourist", "m": "n. 여행자, 관광객"}, {"w": "far", "m": "a. 먼, 저쪽의 ｜ ad. 멀리"}, {"w": "safe", "m": "a. (신체적 위험 등으로부터) 안전한, 안심할 수 있는"}, {"w": "dangerous", "m": "a. 위험한"}, {"w": "camp", "m": "n. 야영지, 캠프장 ｜ v. 야영하다"}, {"w": "plan", "m": "n. 계획, 구상 ｜ v. ~을 계획하다"}, {"w": "ticket", "m": "n. 표, 승차권, 입장권"}, {"w": "fare", "m": "n. (교통) 요금, 운임"}, {"w": "land", "m": "v. 착륙하다, 상륙하다 ｜ n. 육지, 땅"}, {"w": "arrive", "m": "v. 도착하다"}, {"w": "depart", "m": "v. 출발하다, 떠나다"}, {"w": "return", "m": "v. 돌아오다, 돌아가다"}, {"w": "make a plan", "m": "계획을 세우다"}, {"w": "take a trip", "m": "(짧은) 여행하다"}, {"w": "get[come, turn] back from", "m": "~에서 되돌아오다"}, {"w": "check in", "m": "투숙[탑승] 수속을 밟다"}, {"w": "check out", "m": "(호텔 등에서 비용을 지불하고) 나가다"}], "unit 20": [{"w": "choose", "m": "v. 고르다, 선택하다"}, {"w": "goods", "m": "n. 물건, 상품"}, {"w": "item", "m": "n. 물건, 품목"}, {"w": "arrange", "m": "v. 정리하다, 조정하다"}, {"w": "pack", "m": "v. 싸다, 포장하다 ｜ n. 꾸러미, 포장한 짐"}, {"w": "list", "m": "n. 목록, 표"}, {"w": "catalog", "m": "n. (상품 등의) 목록, 카탈로그"}, {"w": "tool", "m": "n. 연장, 도구"}, {"w": "belong", "m": "v. ~에 속하다, ~의 것이다"}, {"w": "own", "m": "a. 자기 자신의 ｜ v. 소유하다"}, {"w": "everything", "m": "n. 모든 것, 아주 중요한 것"}, {"w": "nothing", "m": "n. 아무것도 ~ 아닌 것[일·사람]"}, {"w": "everywhere", "m": "ad. 어디에나, 도처에"}, {"w": "nowhere", "m": "ad. 아무 데도 ~ 없다[아니다]"}, {"w": "carry", "m": "v. 운반하다, 나르다"}, {"w": "piece", "m": "n. 조각, 부분, 부품"}, {"w": "pair", "m": "n. 한 벌, 한 쌍"}, {"w": "sheet", "m": "n. 얇은 판, (종이) 장, 시트(침대에 까는 얇은 천)"}, {"w": "spare", "m": "a. 여분의, 예비의 ｜ v. 할애하다, 면하게 하다"}, {"w": "throw", "m": "v. 던지다, 버리다, 파티를 열다"}, {"w": "a pair of", "m": "한 켤레의, 한 벌의"}, {"w": "a kind of", "m": "일종의, ~ 같은"}, {"w": "belong to", "m": "~에 속하다, ~ 소유[것]이다"}, {"w": "make a good[bad] choice", "m": "선택을 잘하다[잘 못하다]"}, {"w": "arrange one’s closet[books]", "m": "옷장[책]을 정리하다"}], "unit 21": [{"w": "simple", "m": "a. 단순한, 간단한, 검소한"}, {"w": "funny", "m": "a. 우스운, 재미있는"}, {"w": "huge", "m": "a. 거대한, 막대한"}, {"w": "soft", "m": "a. 부드러운, 연한, 온화한"}, {"w": "free", "m": "a. 자유로운, 무료의"}, {"w": "full", "m": "a. 가득 찬, 완전한"}, {"w": "empty", "m": "a. 빈, 비어 있는"}, {"w": "shape", "m": "n. 모양, 형태, 몸매"}, {"w": "alike", "m": "a. 서로 같은, 비슷한 ｜ ad. 마찬가지로"}, {"w": "round", "m": "a. 둥근, 원형의 ｜ ad. 둥글게, 둘레에"}, {"w": "flat", "m": "a. 평평한, 납작한 ｜ n. (주로 영) 아파트"}, {"w": "traditional", "m": "a. 전통적인"}, {"w": "striped", "m": "a. 줄무늬의"}, {"w": "pattern", "m": "n. 패턴, 형태, 무늬"}, {"w": "modern", "m": "a. 현대의, 신식의"}, {"w": "sharp", "m": "a. 날카로운, 예리한"}, {"w": "convenient", "m": "a. 편리한, 손쉬운, 사용하기 좋은"}, {"w": "useful", "m": "a. 쓸모 있는, 유용한"}, {"w": "helpful", "m": "a. 도움이 되는"}, {"w": "necessary", "m": "a. 필요한"}, {"w": "look alike", "m": "~같아 보이다, 닮다"}, {"w": "be full of", "m": "~로 가득하다"}, {"w": "in the middle of", "m": "~의 한가운데"}, {"w": "point at", "m": "~을 가리키다"}, {"w": "upside down", "m": "(아래 위가) 거꾸로, 뒤집힌"}], "unit 22": [{"w": "count", "m": "v. 수를 세다, 계산하다"}, {"w": "point", "m": "n. (지)점, 점수 ｜ v. 지적하다"}, {"w": "add", "m": "v. 더하다, 합치다"}, {"w": "plus", "m": "prep. ~을 더하여, 플러스하여 ｜ a. (기온이) 영상의"}, {"w": "minus", "m": "prep. ~을 뺀[제외한] ｜ a. (기온이) 영하의"}, {"w": "double", "m": "v. 두 배로 하다 ｜ n. 두 배, 갑절 ｜ a. 두 배의"}, {"w": "hundred", "m": "a. 100의 ｜ n. 백 개, 백 명"}, {"w": "thousand", "m": "a. 1,000의 ｜ n. 천 개, 천 명"}, {"w": "million", "m": "a. 백만의 ｜ n. 백만 개, 백만 명"}, {"w": "billion", "m": "a. 10억의 ｜ n. 10억, 막대한 수"}, {"w": "half", "m": "a. 반의, 절반의 ｜ n. 반, 절반"}, {"w": "quarter", "m": "a. 4분의 1의 ｜ n. 4분의 1, 25센트"}, {"w": "bit", "m": "n. 작은 조각, 조금"}, {"w": "few", "m": "a. 거의 없는, (a few로 긍정적) 소수의, 약간의"}, {"w": "lot", "m": "n. 많음, 다수, 부지"}, {"w": "plenty", "m": "n. 많음, 풍부한 양 ｜ a. 많은, 충분한"}, {"w": "several", "m": "a. 몇몇의"}, {"w": "nearly", "m": "ad. 거의, 대략"}, {"w": "multiply", "m": "v. 곱하다, 증가시키다"}, {"w": "divide", "m": "v. 나누다, 분리하다"}, {"w": "at first", "m": "처음에는"}, {"w": "at last", "m": "마침내, 결국"}, {"w": "cut ~ in half", "m": "~을 반으로 자르다"}, {"w": "hundreds[thousands] of", "m": "수백[천]의"}, {"w": "a lot[lots] of", "m": "많은"}], "unit 23": [{"w": "cross", "m": "v. (가로질러) 건너다, 횡단하다"}, {"w": "across", "m": "ad. ~을 가로질러, 건너서 ｜ prep. 건너편에, 가로질러"}, {"w": "away", "m": "ad. 떨어져서, 멀리"}, {"w": "block", "m": "n. (도시의) 한 구획, 블록 ｜ v. (지나가지 못하게)  막다, 차단하다"}, {"w": "corner", "m": "n. 길모퉁이, 구석"}, {"w": "road", "m": "n. 길, 도로"}, {"w": "street", "m": "n. 차도, 거리"}, {"w": "path", "m": "n. 작은 길, 산책길, 경주로"}, {"w": "sidewalk", "m": "n. 인도, 보도"}, {"w": "crosswalk", "m": "n. 횡단보도"}, {"w": "almost", "m": "ad. 거의, 대체로"}, {"w": "ahead", "m": "ad. (공간·시간상으로) 앞으로, 앞에"}, {"w": "mistake", "m": "n. 실수, 잘못, 오해 ｜ v. 오해하다, 잘못 생각하다"}, {"w": "miss", "m": "v. 놓치다, 그리워하다"}, {"w": "direction", "m": "n. 방향, 지시"}, {"w": "traffic", "m": "n. 교통, 왕래, 통행"}, {"w": "subway", "m": "n. 지하철"}, {"w": "stranger", "m": "n. 낯선 사람, 초행자"}, {"w": "along", "m": "prep. ~을 (죽·계속) 따라, ~을 끼고"}, {"w": "accident", "m": "n. 사고, 우연한 일"}, {"w": "shake hands", "m": "악수하다"}, {"w": "go ahead", "m": "(~보다) 앞서 행하다, 먼저 하다"}, {"w": "have an accident", "m": "사고를 당하다"}, {"w": "make a mistake", "m": "실수하다"}, {"w": "run away", "m": "도망가다"}], "unit 24": [{"w": "country", "m": "n. 시골, 나라"}, {"w": "city", "m": "n. 도시"}, {"w": "state", "m": "n. 국가, (미국·오스트레일리아 등의) 주"}, {"w": "town", "m": "n. 읍, 면"}, {"w": "downtown", "m": "ad. (특히 미국) 도심지로, 시내에 ｜ n. 도심지"}, {"w": "hometown", "m": "n. 고향"}, {"w": "village", "m": "n. 마을"}, {"w": "map", "m": "n. 지도"}, {"w": "sign", "m": "n. 표시, 신호, 간판"}, {"w": "tower", "m": "n. 탑"}, {"w": "familiar", "m": "a. 익숙한, 낯익은"}, {"w": "distance", "m": "n. 거리, 먼 거리"}, {"w": "area", "m": "n. 지역, 장소, 범위"}, {"w": "folk", "m": "a. 민간의, 민속의 ｜ n. [집합적] 사람들"}, {"w": "beach", "m": "n. 해변, 바닷가"}, {"w": "coast", "m": "n. 해안"}, {"w": "main", "m": "a. 주요한, 주된"}, {"w": "central", "m": "a. 중앙의, 중심의"}, {"w": "local", "m": "a. (특정) 지방의, 현지의"}, {"w": "capital", "m": "n. 수도, 대문자"}, {"w": "go downtown", "m": "시내로 나가다"}, {"w": "travel around the country[world]", "m": "국내[세계]를 여행하다"}, {"w": "a group of", "m": "한 무리의 ~, 수많은"}, {"w": "so far", "m": "지금까지"}, {"w": "stand for", "m": "~을 상징하다, ~을 의미하다"}], "unit 25": [{"w": "world", "m": "n. 세계, 세상"}, {"w": "history", "m": "n. 역사"}, {"w": "people", "m": "n. (복수 취급) 사람들, 민족"}, {"w": "population", "m": "n. 인구"}, {"w": "nation", "m": "n. 국가, 국민"}, {"w": "international", "m": "a. 국제적인"}, {"w": "language", "m": "n. 언어, 말"}, {"w": "powerful", "m": "a. 강력한"}, {"w": "crowded", "m": "a. 붐비는, 만원의"}, {"w": "border", "m": "n. 국경, 경계"}, {"w": "global", "m": "a. 지구의, 공 모양의"}, {"w": "official", "m": "a. 공식적인, 직무상의 ｜ n. 공무원"}, {"w": "eastern", "m": "a. 동쪽의"}, {"w": "locate", "m": "v. 위치하다, 찾아내다, 발견하다"}, {"w": "custom", "m": "n. 관습, 풍습"}, {"w": "trouble", "m": "n. 곤란, 근심, 문제점"}, {"w": "culture", "m": "n. 문화"}, {"w": "war", "m": "n. 전쟁"}, {"w": "peace", "m": "n. 평화"}, {"w": "abroad", "m": "ad. 외국에서, 국외로"}, {"w": "all over the world", "m": "세계 도처에"}, {"w": "be crowded with", "m": "~로 가득하다, 꽉 차다"}, {"w": "be in trouble[danger]", "m": "곤경[어려움]에 처하다"}, {"w": "by the way", "m": "그런데, 어쨌거나 (화제를 바꿀 때 씀)"}, {"w": "all the way", "m": "줄곧, 내내"}], "unit 26": [{"w": "nature", "m": "n. 자연, 본질, 본성"}, {"w": "raise", "m": "v. (가축을) 기르다, 올리다, 들다"}, {"w": "animal", "m": "n. 동물, 짐승"}, {"w": "plant", "m": "n. 식물 ｜ v. 심다"}, {"w": "grass", "m": "n. 잔디(밭), 풀"}, {"w": "branch", "m": "n. 나뭇가지, 가지 모양의 것"}, {"w": "leaf", "m": "n. 나뭇잎, 잎사귀"}, {"w": "ocean", "m": "n. 대양, 바다"}, {"w": "lake", "m": "n. 호수"}, {"w": "mountain", "m": "n. 산"}, {"w": "season", "m": "n. 계절"}, {"w": "spring", "m": "n. 봄 ｜ a. 봄의"}, {"w": "summer", "m": "n. 여름 ｜ a. 여름의"}, {"w": "autumn", "m": "n. 가을 ｜ a. 가을의"}, {"w": "winter", "m": "n. 겨울 ｜ a. 겨울의"}, {"w": "desert", "m": "n. 사막, 황무지"}, {"w": "sand", "m": "n. 모래, 모래사장"}, {"w": "island", "m": "n. 섬"}, {"w": "forever", "m": "ad. 영원히, 언제까지나, 계속"}, {"w": "wonderful", "m": "a. 훌륭한, 대단한, 멋진"}, {"w": "go to the mountain[beach]", "m": "산[해변]으로 가다"}, {"w": "go (out) for a walk", "m": "산책하다"}, {"w": "in (the) early[late] spring", "m": "이른[늦은] 봄에"}, {"w": "give birth to", "m": "~를 낳다"}, {"w": "sooner or later", "m": "조만간, 머잖아"}], "unit 27": [{"w": "weather", "m": "n. 날씨, 기상"}, {"w": "lovely", "m": "a. (날씨가) 멋진, 사랑스러운"}, {"w": "shine", "m": "v. 빛나다, 태양이 비치다"}, {"w": "clear", "m": "a. 맑게 갠, 깨끗한, 맑은"}, {"w": "pour", "m": "v. (비가) 퍼붓다, 붓다, 흘리다"}, {"w": "blow", "m": "v. (바람이) 불다, 입김을 불다"}, {"w": "cloudy", "m": "a. 구름 낀, 흐린"}, {"w": "fog", "m": "n. 안개"}, {"w": "degree", "m": "n. (온도·각도 등의) 도"}, {"w": "bright", "m": "a. (날씨가) 화창한, 밝은, 빛나는"}, {"w": "rainbow", "m": "n. 무지개, (무지개 같은) 화려한 배색"}, {"w": "cool", "m": "a. 시원한, 근사한, 멋진"}, {"w": "wet", "m": "a. 젖은, 비 내리는"}, {"w": "dry", "m": "a. 마른, 건조한 │ v. 마르다, 말리다"}, {"w": "snowman", "m": "n. 눈사람"}, {"w": "storm", "m": "n. 폭풍, 폭풍우"}, {"w": "thunder", "m": "n. 천둥, 우레"}, {"w": "humid", "m": "a. (날씨가) 습한, 눅눅한"}, {"w": "melt", "m": "v. (열에) 녹이다, 사라지다, (감정 등이) 누그러지다"}, {"w": "freeze", "m": "v. 얼다, 냉동하다"}, {"w": "in the rain", "m": "빗속에, 비를 맞으며"}, {"w": "in the sun", "m": "태양 아래에서"}, {"w": "get wet", "m": "젖다"}, {"w": "rain cats and dogs", "m": "비가 억수같이[세차게] 쏟아지다"}, {"w": "all year round", "m": "일 년 내내"}], "unit 28": [{"w": "environment", "m": "n. 환경"}, {"w": "earth", "m": "n. 지구, 세상"}, {"w": "wild", "m": "a. 야생의, 거친"}, {"w": "forest", "m": "n. 숲, 산림, 삼림"}, {"w": "pollute", "m": "v. 더럽히다, 오염시키다"}, {"w": "damage", "m": "v. 손상을[피해를] 주다 ｜ n. 손상, 피해"}, {"w": "trash", "m": "n. 쓰레기, 폐물"}, {"w": "waste", "m": "v. 낭비하다 ｜ n. 낭비, 쓰레기"}, {"w": "destroy", "m": "v. 부수다, 파괴하다"}, {"w": "factory", "m": "n. 공장"}, {"w": "reduce", "m": "v. 줄이다, 낮추다"}, {"w": "harmful", "m": "a. 해로운"}, {"w": "enough", "m": "a. 충분한 ｜ ad. 충분히, 꽤"}, {"w": "resource", "m": "n. 자원, 재원"}, {"w": "save", "m": "v. 절약하다, 저축하다, 구해내다"}, {"w": "cleanup", "m": "n. (대)청소, 정화"}, {"w": "reuse", "m": "v. 재사용하다"}, {"w": "recycle", "m": "v. (폐품을) 재활용하다"}, {"w": "spray", "m": "n. 스프레이, (소독액·향수 등의) 분무"}, {"w": "protect", "m": "v. 보호하다, 막다, 지키다"}, {"w": "be harmful to", "m": "~에 해롭다"}, {"w": "throw away trash[garbage]", "m": "쓰레기를 버리다"}, {"w": "turn ~ into...", "m": "~을 …로 바꾸다"}, {"w": "give up", "m": "포기하다, 단념하다"}, {"w": "in the (near) future", "m": "(가까운) 미래에"}], "unit 29": [{"w": "smart", "m": "a. 현명한, 영리한, 재치 있는"}, {"w": "foolish", "m": "a. 어리석은, 바보 같은"}, {"w": "education", "m": "n. 교육"}, {"w": "elementary", "m": "a. 기초의, 초등학교의"}, {"w": "middle", "m": "a. 중간의, 한가운데의 ｜ n. 중앙, (한)가운데"}, {"w": "college", "m": "n. 전문대학, 단과 대학"}, {"w": "university", "m": "n. (종합) 대학교"}, {"w": "advice", "m": "n. 충고, 조언"}, {"w": "break", "m": "n. 잠시 동안의 휴식 ｜ v. 깨다, 부수다"}, {"w": "classmate", "m": "n. 급우, 반 친구"}, {"w": "grade", "m": "n. 학년, 성적, 등급"}, {"w": "textbook", "m": "n. 교과서"}, {"w": "report", "m": "n. 보고(서), 성적표 ｜ v. 보고하다, 전하다"}, {"w": "pass", "m": "v. 통과하다, 지나다, 합격하다 ｜ n. (시험) 합격"}, {"w": "fail", "m": "v. 실패하다, (시험에) 떨어지다"}, {"w": "project", "m": "n. (연구) 과제, 프로젝트"}, {"w": "examination(=exam)", "m": "n. 시험, 고사"}, {"w": "library", "m": "n. 도서관"}, {"w": "museum", "m": "n. 박물관, 미술관, 기념관"}, {"w": "graduate", "m": "v. 졸업하다"}, {"w": "take[have] a break", "m": "잠시 휴식을 취하다[갖다]"}, {"w": "graduate from school", "m": "학교를 졸업하다"}, {"w": "give a big hand", "m": "박수갈채를 보내다"}, {"w": "it seems like", "m": "~인 것 같다"}], "unit 30": [{"w": "know", "m": "v. 알다, 깨닫다, 이해하다"}, {"w": "correct", "m": "a. 올바른, 정확한 ｜ v. 바로잡다"}, {"w": "wrong", "m": "a. 틀린, 잘못된, 나쁜"}, {"w": "course", "m": "n. 교과, 수업, 진행, 코스"}, {"w": "repeat", "m": "v. 반복하다, 되풀이하여 말하다"}, {"w": "mean", "m": "v. 의미하다, 뜻하다"}, {"w": "understand", "m": "v. 이해하다, 알다"}, {"w": "follow", "m": "v. 따라가다, 말을 이해하다"}, {"w": "practice", "m": "n. 연습, 실행 ｜ v. 연습하다, 실행하다"}, {"w": "dialogue", "m": "n. 대화, 회화"}, {"w": "review", "m": "v. 복습하다 ｜ n. 복습, 재검토"}, {"w": "excellent", "m": "a. 훌륭한, 우수한"}, {"w": "difficult", "m": "a. 어려운, 곤란한"}, {"w": "mathematics(= math)", "m": "n. 수학"}, {"w": "subject", "m": "n. 과목, 학과, 주제"}, {"w": "example", "m": "n. 예, 본보기"}, {"w": "explain", "m": "v. 설명하다"}, {"w": "exact", "m": "a. 정확한, 딱 맞는"}, {"w": "improve", "m": "v. 향상시키다, 개선하다"}, {"w": "underline", "m": "v. 밑줄을 긋다, 강조하다"}, {"w": "be over", "m": "끝나다"}, {"w": "repeat after", "m": "~을 따라 반복하다"}, {"w": "for example", "m": "예를 들면"}, {"w": "all day[night]", "m": "하루 종일[밤새도록]"}, {"w": "do[try] one’s best", "m": "최선을 다하다"}], "unit 31": [{"w": "technology", "m": "n. 기술, 과학기술"}, {"w": "video", "m": "n. 영상, 비디오"}, {"w": "digital", "m": "a. 디지털 방식의(숫자로 표시하는)"}, {"w": "cell phone(= cellular phone)", "m": "n. 휴대 전화, 핸드폰"}, {"w": "battery", "m": "n. 건전지, 배터리"}, {"w": "electric", "m": "a. 전기의, 전자의"}, {"w": "telescope", "m": "n. 망원경"}, {"w": "scientist", "m": "n. 과학자"}, {"w": "basic", "m": "a. 기초적인, 기본적인 ｜ n. (복수로) 기본, 기초,  필수적인 것들"}, {"w": "prove", "m": "v. 증명하다, 입증하다"}, {"w": "data", "m": "n. 자료, 정보, 데이터"}, {"w": "energy", "m": "n. 에너지, 힘"}, {"w": "genius", "m": "n. 천재, 비범한 능력"}, {"w": "invent", "m": "v. 발명하다, 개발하다, 고안하다"}, {"w": "robot", "m": "n. 로봇, 인조인간"}, {"w": "machine", "m": "n. 기계, 기계 장치"}, {"w": "copy", "m": "v. 복사하다, 흉내 내다 ｜ n. 복사, 사본"}, {"w": "experiment", "m": "n. (과학적인) 실험 ｜ v. (과학적인) 실험을 하다"}, {"w": "space", "m": "n. 우주, 공간, 장소"}, {"w": "spaceship", "m": "n. 우주선"}, {"w": "find out", "m": "찾아내다"}, {"w": "carry out", "m": "실행하다"}, {"w": "for a long time", "m": "오랫동안"}, {"w": "after all", "m": "결국"}, {"w": "from now on", "m": "앞으로는, 지금부터는"}], "unit 32": [{"w": "computer", "m": "n. 컴퓨터"}, {"w": "personal", "m": "a. 개인의[개인적인], 자신만의"}, {"w": "print", "m": "v. 인쇄하다, 출력하다 ｜ n. 프린트, 출판물"}, {"w": "screen", "m": "n. 화면, 스크린"}, {"w": "site", "m": "n. (인터넷) 사이트, 장소, 위치"}, {"w": "receive", "m": "v. 받다, 입수하다"}, {"w": "password", "m": "n. 암호, 비밀번호"}, {"w": "Internet", "m": "n. 인터넷"}, {"w": "on-line", "m": "a. 온라인의 ｜ ad. 온라인으로"}, {"w": "chat", "m": "v. 잡담하다, 이야기하다 ｜ n. 잡담, 담소"}, {"w": "click", "m": "v. (마우스를) 누르다, 클릭하다 ｜ n. 찰깍하는 소리,  (마우스의) 클릭"}, {"w": "download", "m": "v. 내려받다, 다운로드하다"}, {"w": "communicate", "m": "v. 통신하다, 연락하다"}, {"w": "information", "m": "n. 정보"}, {"w": "compact", "m": "a. 꽉 찬, 소형의, 아담한"}, {"w": "surf", "m": "v. (컴퓨터) 검색하다, 파도타기를 하다"}, {"w": "browse", "m": "v. 검색하다, 대강 훑어보다"}, {"w": "font", "m": "n. (인쇄) 서체, 폰트 (종류·크기가 같은 활자 한 벌)"}, {"w": "domain", "m": "n. (컴퓨터) 도메인, (지식·활동의) 영역, 분야"}, {"w": "widely", "m": "ad. 널리, 폭넓게"}, {"w": "back up data", "m": "데이터를 저장하다"}, {"w": "surf the Internet", "m": "인터넷을 검색하다"}, {"w": "send a text message", "m": "문자 메시지를 보내다"}, {"w": "at the moment", "m": "바로 지금"}, {"w": "at the same time", "m": "동시에"}], "unit 33": [{"w": "society", "m": "n. 사회, 모임, 협회"}, {"w": "system", "m": "n. 체계, 조직"}, {"w": "equal", "m": "a. 같은, 평등한, 동등한"}, {"w": "freedom", "m": "n. 자유"}, {"w": "right", "m": "n. 권리, 옳은 것 ｜ a. 옳은, 오른쪽의"}, {"w": "century", "m": "n. 1세기, 백 년"}, {"w": "agree", "m": "v. 동의하다, 일치하다"}, {"w": "against", "m": "prep. ~에 반대하여, 대항하여, 기대어"}, {"w": "smoke", "m": "n. 연기 ｜ v. 연기를 내다, 담배를 피우다"}, {"w": "line", "m": "n. 선, 줄 ｜ v. 선을 긋다, 줄 서다"}, {"w": "reason", "m": "n. 이유, 이성"}, {"w": "hero", "m": "n. 영웅, (소설·영화 등의) 남자 주인공"}, {"w": "leader", "m": "n. 지도자"}, {"w": "president", "m": "n. 대통령, 장(長), 의장"}, {"w": "rule", "m": "n. 규칙, 원칙 ｜ v. 통치하다, 다스리다"}, {"w": "steal", "m": "v. 훔치다, 도둑질하다"}, {"w": "thief", "m": "n. 도둑, 절도범"}, {"w": "campaign", "m": "n. 운동, 캠페인"}, {"w": "volunteer", "m": "n. 자원봉사자 ｜ v. 자원하다, 자진하여 하다"}, {"w": "appreciate", "m": "v. 고맙게 여기다, 평가하다, 감상하다"}, {"w": "stand in line", "m": "줄을 서다, 일렬로 서다"}, {"w": "cut in line", "m": "새치기하다"}, {"w": "agree with", "m": "~에 동의하다"}, {"w": "come to", "m": "~하게 되다"}, {"w": "be against[for]", "m": "~에 반대[찬성]하다"}], "unit 34": [{"w": "newspaper", "m": "n. 신문, 신문사"}, {"w": "magazine", "m": "n. 잡지, 매거진"}, {"w": "broadcast", "m": "v. 방송하다, 방영하다"}, {"w": "media", "m": "n. 매체, 미디어"}, {"w": "channel", "m": "n. 채널, 주파수대"}, {"w": "title", "m": "n. 제목, 표제"}, {"w": "topic", "m": "n. 화제, 주제, 관심"}, {"w": "famous", "m": "a. 유명한, 잘 알려진, 훌륭한"}, {"w": "proud", "m": "a. 자랑으로 여기는, 자존심이 있는, 거만한"}, {"w": "journal", "m": "n. 신문[잡지], 기사, 일기"}, {"w": "announcer", "m": "n. 아나운서, 알리는 사람"}, {"w": "reporter", "m": "n. 기자, 통신원"}, {"w": "comedy", "m": "n. 코미디, 희극"}, {"w": "drama", "m": "n. 드라마, 극"}, {"w": "advertisement(= ad)", "m": "n. 광고"}, {"w": "guide", "m": "n. 안내자, 안내서, 지침 ｜ v. (장소로) 안내하여  데려가다"}, {"w": "fact", "m": "n. 사실"}, {"w": "true", "m": "a. 진실한, 사실의, 진짜의"}, {"w": "false", "m": "a. 그릇된, 거짓의"}, {"w": "article", "m": "n. 기사, 논문, 물품"}, {"w": "be famous for", "m": "~로 유명하다"}, {"w": "be proud of", "m": "~을 자랑스러워하다"}, {"w": "keep[break] one’s word", "m": "약속을 지키다[어기다]"}, {"w": "in fact", "m": "사실은"}, {"w": "make sure", "m": "반드시 (~하도록) 하다"}], "unit 35": [{"w": "about", "m": "prep. ~에 대하여, 약[대략] ~, ~경[쯤]"}, {"w": "among", "m": "prep. (셋 이상의) 사이에"}, {"w": "between", "m": "prep. (둘의) 사이에"}, {"w": "both A and B", "m": "conj. A와 B 둘 다"}, {"w": "either A or B", "m": "conj. A 아니면 B"}, {"w": "neither A nor B", "m": "conj. A도 B도 아니다"}, {"w": "A as well as B", "m": "conj. B뿐만 아니라 A도"}, {"w": "for", "m": "prep. ~을 위하여, ~ 동안"}, {"w": "since", "m": "prep. ~ 이래로, ~ 이후로 ｜ conj. ~한 이래로"}, {"w": "except", "m": "prep. ~을 제외하고"}, {"w": "than", "m": "prep. ~보다 더"}, {"w": "through", "m": "prep. ~을 통하여, ~을 지나서"}, {"w": "with", "m": "prep. ~와 함께, ~을 가지고, ~을 가진"}, {"w": "without", "m": "prep. ~ 없이, ~하지 않고"}, {"w": "although", "m": "conj. ~임에도 불구하고, 비록 ~일지라도"}, {"w": "because", "m": "conj. ~ 때문에, 왜냐하면"}, {"w": "until", "m": "prep. ~까지 ｜ conj. ~(할 때)까지"}, {"w": "when", "m": "conj. ~할 때"}, {"w": "if", "m": "conj. 만일 ~라면"}, {"w": "unless", "m": "conj. 만일 ~가 아니라면"}, {"w": "step by step", "m": "한 걸음씩, 차근차근"}, {"w": "now and then", "m": "때때로, 종종"}, {"w": "here and there", "m": "여기저기에, 곳곳에"}, {"w": "day and night", "m": "밤낮으로, 끊임없이"}, {"w": "after a while", "m": "잠시 후에"}]};
+const vocabData = {};
+Object.keys(rawVocabData).forEach(k => { vocabData[k.replace('unit', 'Unit')] = rawVocabData[k]; });
+const unitList = i => vocabData['Unit ' + (i + 1)] || [];
+
+// ===== 스토리 데이터 =====
+const PROLOGUE = [
+  { e:'📜', n:'이야기', text:"먼 옛날, 영어 단어 결정이 반짝이던 평화의 땅 '보카랜드'가 있었습니다." },
+  { e:'📜', n:'이야기', text:"그런데 어느 날, 망각 마왕 '포겟'이 짙은 안개를 퍼뜨려 모든 단어 결정을 훔쳐 갔습니다!" },
+  { e:'📜', n:'이야기', text:"단어를 잃은 사람들은 말도 길도 잃어버렸죠. 마지막 희망은 낡은 탱크 '보카 1호'뿐!" },
+  { e:'🧒', n:'토리 (조종사)', text:"내가 조종사 토리야! 35개 지역의 보스를 쓰러뜨리고 단어 결정을 되찾아 올게!" },
+  { e:'📜', n:'이야기', text:"화면 위의 '뜻'에 맞는 영어 단어 몬스터를 쏘세요. 틀린 몬스터를 쏘면 콤보가 끊기고, 정답 몬스터를 놓치면 하트가 깎여요. 💡을 쏘면 정답이 반짝이고 ❤️를 쏘면 하트가 차오릅니다!" }
+];
+const EPILOGUE = [
+  { e:'📜', n:'이야기', text:"마왕 포겟이 사라지고 안개가 걷혔습니다. 35개 지역의 단어 결정이 모두 제자리로 돌아왔어요!" },
+  { e:'🧒', n:'토리 (조종사)', text:"해냈다! 이제 단어는 영원히 잊히지 않을 거야!" },
+  { e:'📜', n:'이야기', text:"보카랜드는 다시 평화를 되찾았고, 토리와 보카 1호는 전설이 되었답니다. — THE END —" }
+];
+const CH = [
+ {t:'가족 마을', mob:'🐣', boss:'🐻', bn:'가족사진 도둑 베어', bl:'가족 단어들은 내가 다 숨겼다! 찾을 수 있으면 찾아보시지~', hl:'가족 단어, 내가 되찾는다!', ol:'으악! 돌려줄게... 가족은 소중하니까.'},
+ {t:'우정의 다리', mob:'🐸', boss:'🦊', bn:'이간질쟁이 폭스', bl:'친구 단어가 사라지면 우정도 끝이지!', hl:'우정은 단어로 이어지는 거야!', ol:'졌다... 나도 친구 하고 싶어.'},
+ {t:'직업 시장', mob:'🔧', boss:'🦉', bn:'가짜 면접관 올빼미', bl:'이 단어들은 전부 불합격! 내 창고행이다.', hl:'합격은 내가 정한다!', ol:'합격... 인정이다!'},
+ {t:'성격 숲', mob:'😼', boss:'🐲', bn:'변덕쟁이 드래곤', bl:'오늘은 심술 난 날! 성격 단어는 못 줘!', hl:'차분하게... 조준!', ol:'휴, 진정했어. 가져가.'},
+ {t:'거울 궁전', mob:'🪞', boss:'🧙', bn:'거울 마녀 미라', bl:'거울아 거울아, 외모 단어를 모두 가져가렴!', hl:'겉모습보다 중요한 건 단어 실력이야!', ol:'내 거울이 깨졌어!!'},
+ {t:'감정 호수', mob:'💧', boss:'🐙', bn:'울보 문어 옥토', bl:'감정 단어는 내 먹물 속에 퐁당...', hl:'기분 단어, 되찾으러 간다!', ol:'엉엉... 돌려줄게.'},
+ {t:'인체 동굴', mob:'🦠', boss:'🧟', bn:'좀비 박사', bl:'뼈와 뇌 단어는 내 실험 재료지!', hl:'몸에 새기도록 외워 주마!', ol:'내 실험이 실패라니...'},
+ {t:'오감 정원', mob:'🐝', boss:'🦇', bn:'소음 박쥐', bl:'끼야악! 소리도 냄새도 맛도 뒤죽박죽 만들어 주지!', hl:'오감을 곤두세우고!', ol:'시끄럽게 해서 미안...'},
+ {t:'건강 병원', mob:'🤧', boss:'🐍', bn:'감기 대왕 바이러스', bl:'콜록! 건강 단어를 모두 감염시켰다!', hl:'백신 발사!', ol:'콜록... 치료됐다.'},
+ {t:'패션 거리', mob:'👕', boss:'🦄', bn:'옷장 요정 유니', bl:'내 옷장에 단어를 다 걸어 놨어. 입어 보시지!', hl:'단어 옷, 한 벌씩 되찾는다!', ol:'옷장이 텅 비었네...'},
+ {t:'수상한 집', mob:'🐀', boss:'👹', bn:'청소 안 한 괴물 메스', bl:'집 안은 엉망진창! 단어도 어딘가 파묻혔어.', hl:'대청소 시작이다!', ol:'깨끗해지니 기분 좋네...'},
+ {t:'먹보 마을', mob:'🍔', boss:'🐷', bn:'먹보 돼지 포크', bl:'배고파! 음식 단어는 다 먹어 버렸다!', hl:'배부르기 전에 되찾는다!', ol:'꺼억... 다 토해낼게.'},
+ {t:'마법 주방', mob:'🍳', boss:'🦀', bn:'불꽃 요리사 크랩', bl:'내 레시피에 단어를 넣어 끓이는 중이야!', hl:'요리 단어, 건져 올린다!', ol:'앗 뜨거! 불을 꺼야겠다.'},
+ {t:'시계탑', mob:'⏰', boss:'🐢', bn:'시간 도둑 거북', bl:'시간이 멈췄다... 단어도 멈췄지!', hl:'시간이 없다, 빠르게!', ol:'시간이 다시 흐르기 시작했어.'},
+ {t:'등굣길', mob:'🐌', boss:'🐗', bn:'지각 대장 멧돼지', bl:'늦었다 늦었어! 일상 단어들이 도망간다!', hl:'서둘러 따라잡는다!', ol:'헉헉... 내가 졌다.'},
+ {t:'별빛 축제', mob:'🎈', boss:'🤡', bn:'축제 훼방꾼 광대', bl:'축제는 취소다! 단어 폭죽을 모두 터뜨렸지!', hl:'축제를 되찾자!', ol:'다시 축제를 열자고!'},
+ {t:'스타디움', mob:'⚽', boss:'🦍', bn:'반칙왕 고릴라', bl:'규칙은 없다! 스포츠 단어는 내 거야!', hl:'페어플레이로 이긴다!', ol:'반칙은 안 되는 거였군...'},
+ {t:'대형 마트', mob:'🛒', boss:'🦝', bn:'바가지 너구리', bl:'세일 끝! 단어 값은 비싸다고~', hl:'계산은 포탄으로!', ol:'환불해 줄게...'},
+ {t:'국제공항', mob:'✈️', boss:'🦅', bn:'공항 점령 독수리', bl:'탑승 불가! 여행 단어는 내 비행기에 실렸다!', hl:'이륙 준비 완료!', ol:'착륙하겠다... 돌려줄게.'},
+ {t:'물건 창고', mob:'📦', boss:'🕷️', bn:'수집광 거미', bl:'물건 단어들은 내 거미줄 속에!', hl:'거미줄을 끊어 주마!', ol:'내 컬렉션이...'},
+ {t:'도형 나라', mob:'🔷', boss:'🦔', bn:'삐죽삐죽 고슴도치', bl:'둥글게 모나게 뒤죽박죽! 모양 단어가 흩어졌어!', hl:'정확히 조준!', ol:'모양이 원래대로 돌아왔네...'},
+ {t:'계산 던전', mob:'🔢', boss:'🦂', bn:'곱셈 전갈', bl:'숫자 단어는 내가 몽땅 곱해서 없애 버렸지!', hl:'나눠서 정복한다!', ol:'나눗셈에 졌다...'},
+ {t:'미로 거리', mob:'🚦', boss:'🐺', bn:'길 잃은 늑대', bl:'여긴 어디? 길 단어도 길을 잃었어.', hl:'길을 찾아 줄게!', ol:'이제 집에 갈 수 있겠다.'},
+ {t:'도심 타워', mob:'🏢', boss:'🦖', bn:'빌딩 공룡 렉스', bl:'도시 단어는 내 발밑에 짓밟혔다!', hl:'도시를 지킨다!', ol:'쿵... 쓰러졌다.'},
+ {t:'세계 지도', mob:'🌍', boss:'🐘', bn:'세계 정복 코끼리', bl:'세계 단어는 전부 내 코 안에 있지!', hl:'전 세계의 단어를 모은다!', ol:'푸하~ 돌려줄게.'},
+ {t:'숲 속 호수', mob:'🌿', boss:'🌳', bn:'고목 괴물 엔트', bl:'자연 단어는 숲이 삼켰다!', hl:'숲을 되살린다!', ol:'숲이 다시 푸르러졌어.'},
+ {t:'폭풍 구름 위', mob:'☁️', boss:'🦈', bn:'번개 상어 썬더', bl:'폭풍우로 날씨 단어를 날려 버렸지!', hl:'비바람을 뚫고 발사!', ol:'날씨가 갰다...'},
+ {t:'쓰레기 산', mob:'🗑️', boss:'🦨', bn:'쓰레기 대왕 스컹크', bl:'환경 단어? 쓰레기통에 버렸다!', hl:'지구를 지킨다!', ol:'분리수거 할게...'},
+ {t:'마법 학교', mob:'📝', boss:'👻', bn:'시험 귀신', bl:'학교 단어를 모두 시험지 속에 가뒀지!', hl:'공부한 대로 쏜다!', ol:'만점이라니...'},
+ {t:'교실 결전', mob:'✏️', boss:'🐯', bn:'엄격한 호랑이 쌤', bl:'수업 시간에 장난은 금물! 어디 외워 보거라!', hl:'예습 복습 완료!', ol:'참 잘했어요! 도장 쾅!'},
+ {t:'로봇 연구소', mob:'🔩', boss:'🤖', bn:'폭주 로봇 제로', bl:'삐삐! 기술 단어를 모두 삭제합니다.', hl:'해킹 대신 격파!', ol:'시스템... 종료...'},
+ {t:'사이버 세계', mob:'💾', boss:'👾', bn:'바이러스 해커 버그', bl:'컴퓨터 단어는 전부 암호화했다!', hl:'해독 코드 발사!', ol:'접속 종료...'},
+ {t:'정의의 광장', mob:'⚖️', boss:'👺', bn:'새치기 대왕 고블린', bl:'규칙? 그게 뭐야? 사회 단어는 내가 새치기했다!', hl:'줄 서서 기다려!', ol:'줄 설게요...'},
+ {t:'방송국', mob:'📺', boss:'🦜', bn:'가짜뉴스 앵무새', bl:'뉴스 속보! 단어가 모두 가짜로 바뀌었다!', hl:'진짜 단어를 밝혀낸다!', ol:'정정 보도합니다...'},
+ {t:'망각의 성', mob:'🌫️', boss:'👿', bn:'망각 마왕 포겟', bl:'드디어 왔구나! 모든 단어를 잊게 만들어 주마, 하하하!', hl:'내가 외운 단어들이 힘이다! 최종 결전!', ol:'말도 안 돼... 단어의 힘이라니...'}
+];
+
+// ===== 기본 설정 =====
+const W = 800, H = 500, MAX_HEARTS = 5;
+const FONT = '"Pretendard","Malgun Gothic",sans-serif';
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const ov = document.getElementById('overlay');
+const hud = document.getElementById('hud');
+
+const G = { mode:'menu', idx:0, session:0, paused:false, t:0, shake:0, flash:0, lastShot:0 };
+const tank = { x: W/2 - 28, y: 440, w: 56, h: 30, speed: 6 };
+let keys = {};
+let bgStars = Array.from({length:70}, () => ({ x:Math.random()*W, y:Math.random()*H, s:Math.random()*2+0.5, v:Math.random()*0.5+0.1 }));
+
+// ===== 저장 =====
+function loadJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+let starsSaved = loadJSON('vocabTankStars', {});
+
+// ===== 사운드 =====
+let audioCtx = null, soundOn = true;
+function ac() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type, vol, delay, slide) {
+  if (!soundOn) return;
+  const c = ac(); if (!c) return;
+  const t0 = c.currentTime + (delay || 0);
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(freq, t0);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t0 + dur);
+  g.gain.setValueAtTime(vol || 0.06, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  shoot: () => tone(700, 0.1, 'square', 0.035, 0, -400),
+  good:  () => { tone(660, .1, 'triangle', .08); tone(880, .12, 'triangle', .08, .08); tone(1175, .16, 'triangle', .08, .16); },
+  bad:   () => tone(170, .25, 'sawtooth', .07, 0, -80),
+  hurt:  () => tone(140, .35, 'sawtooth', .09, 0, -90),
+  item:  () => { tone(880, .08, 'sine', .08); tone(1320, .12, 'sine', .08, .07); },
+  win:   () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .2, 'triangle', .09, i * .13)),
+  lose:  () => [392, 330, 262, 196].forEach((f, i) => tone(f, .25, 'sawtooth', .07, i * .18)),
+  click: () => tone(520, .05, 'square', .04)
+};
+
+// ===== 유틸 =====
+const rnd = n => Math.floor(Math.random() * n);
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])); }
+
+// ===== 오버레이 / 대화 =====
+function setOverlay(html, cls) {
+  if (!html) { ov.style.display = 'none'; ov.innerHTML = ''; return; }
+  ov.className = cls || 'center';
+  ov.innerHTML = html;
+  ov.style.display = 'flex';
+  ov.scrollTop = 0;
+}
+let dlg = null, typer = null;
+function showDialog(lines, done) {
+  G.mode = 'dialog';
+  dlg = { lines, i: 0, done };
+  renderDialog();
+}
+function renderDialog() {
+  const L = dlg.lines[dlg.i];
+  setOverlay(`<div class="dlg-full" data-act="dlg"><div class="dialog"><div class="portrait">${L.e}</div><div style="flex:1"><div class="dname">${esc(L.n)}</div><div class="dtext" id="dtext"></div><div class="dnext">▶ 클릭 / 스페이스</div></div></div></div>`, 'dim');
+  const el = document.getElementById('dtext');
+  clearInterval(typer);
+  let k = 0;
+  typer = setInterval(() => {
+    k++; el.textContent = L.text.slice(0, k);
+    if (k >= L.text.length) { clearInterval(typer); typer = null; }
+  }, 26);
+}
+function advanceDialog() {
+  if (!dlg) return;
+  if (typer) {
+    clearInterval(typer); typer = null;
+    const el = document.getElementById('dtext');
+    if (el) el.textContent = dlg.lines[dlg.i].text;
+    return;
+  }
+  sfx.click();
+  dlg.i++;
+  if (dlg.i >= dlg.lines.length) {
+    const cb = dlg.done; dlg = null;
+    setOverlay('');
+    if (cb) cb();
+  } else renderDialog();
+}
+
+// ===== 메뉴 =====
+function starStr(n) { return '★'.repeat(n) + '☆'.repeat(3 - n); }
+function showMenu() {
+  G.session++; G.paused = false; G.mode = 'menu';
+  clearInterval(typer); typer = null; dlg = null; keys = {};
+  hud.style.display = 'none';
+  const cleared = Object.keys(starsSaved).length;
+  let next = 0; while (next < 34 && starsSaved[next]) next++;
+  let cells = '';
+  for (let i = 0; i < 35; i++) {
+    const s = starsSaved[i] || 0;
+    cells += `<button class="stage ${s ? 'cleared' : ''}" data-act="stage" data-i="${i}" title="Unit ${i+1} · ${unitList(i).length}단어"><span class="s-emoji">${CH[i].boss}</span><span class="s-name">${i+1}. ${CH[i].t}</span><span class="s-star">${starStr(s)}</span></button>`;
+  }
+  setOverlay(`<div class="menu"><h2>🗺️ 보카랜드 지도</h2><p>망각 마왕 포겟이 훔쳐 간 단어 결정을 되찾아라! (해방 ${cleared} / 35)</p><div class="btns" style="margin:4px 0"><button data-act="story">📜 이야기 보기</button><button class="btn-primary" data-act="stage" data-i="${next}">▶ ${next+1}단계 출발!</button></div><div class="grid">${cells}</div></div>`, 'center');
+}
+
+// ===== 단계 시작 =====
+function startStage(i) {
+  G.session++; G.idx = i; G.paused = false;
+  setStudyUnit(i);
+  initPlayState();
+  const c = CH[i];
+  showDialog([
+    { e:'📍', n:'Chapter ' + (i + 1), text:`${c.t} (Unit ${i+1}) — 단어 결정 ${unitList(i).length}개가 사라졌다!` },
+    { e:c.boss, n:c.bn, text:c.bl },
+    { e:'🧒', n:'토리 (조종사)', text:c.hl }
+  ], beginPlay);
+  hud.style.display = 'none';
+}
+function initPlayState() {
+  const i = G.idx;
+  Object.assign(G, {
+    mode:'dialog', hearts:MAX_HEARTS, lost:0, score:0, combo:0, maxCombo:0, kills:0,
+    need: 8 + Math.floor(i / 6), deck:[], question:null,
+    monsters:[], bullets:[], items:[], parts:[], floaters:[],
+    spawnT:0.2, hint:0, ready:2.4, bossHit:0, bossDead:false, wrong:new Map(), paused:false
+  });
+  tank.x = W / 2 - tank.w / 2;
+  nextQuestion();
+}
+function beginPlay() {
+  initPlayState();
+  G.mode = 'play';
+  hud.style.display = 'flex';
+  setOverlay('');
+  updateHud();
+  canvas.focus();
+}
+function nextQuestion() {
+  if (!G.deck.length) G.deck = shuffle(unitList(G.idx).slice());
+  G.question = G.deck.pop();
+  const el = document.getElementById('questText');
+  el.textContent = G.question.m;
+  el.title = G.question.m;
+}
+function updateHud() {
+  document.getElementById('hudHearts').textContent = '❤️'.repeat(G.hearts) + '🖤'.repeat(MAX_HEARTS - G.hearts);
+  document.getElementById('hudScore').textContent = '⭐ ' + G.score;
+  document.getElementById('hudCombo').innerHTML = G.combo >= 2 ? '🔥 콤보 ' + G.combo : '&nbsp;';
+}
+
+// ===== 입력 =====
+function fire() {
+  if (G.mode !== 'play' || G.paused || G.ready > 0) return;
+  if (G.t - G.lastShot < 0.16) return;
+  G.lastShot = G.t; G.flash = 0.08;
+  G.bullets.push({ x: tank.x + tank.w / 2, y: tank.y - 24, r: 5, v: 9 });
+  sfx.shoot();
+}
+function togglePause() {
+  if (G.mode !== 'play') return;
+  G.paused = !G.paused; keys = {};
+  if (G.paused) setOverlay(`<div class="panel"><h2>⏸️ 일시정지</h2><div class="btns"><button class="btn-primary" data-act="resume">▶ 계속하기</button><button data-act="map">🗺️ 지도로</button></div></div>`, 'center');
+  else setOverlay('');
+}
+window.addEventListener('keydown', e => {
+  if (e.target && /^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  if (G.mode === 'dialog') { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) advanceDialog(); return; }
+  if (e.code === 'Escape') { togglePause(); return; }
+  keys[e.code] = true;
+  if (e.code === 'Space' && !e.repeat) fire();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => { keys = {}; });
+
+canvas.tabIndex = 0; canvas.style.outline = 'none';
+function pointerX(clientX) {
+  const r = canvas.getBoundingClientRect();
+  const x = (clientX - r.left) * (W / r.width) - tank.w / 2;
+  tank.x = Math.max(0, Math.min(W - tank.w, x));
+}
+canvas.addEventListener('mousedown', () => { canvas.focus(); ac(); fire(); });
+canvas.addEventListener('mousemove', e => { if (G.mode === 'play' && !G.paused) pointerX(e.clientX); });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); ac(); pointerX(e.touches[0].clientX); fire(); }, { passive:false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); pointerX(e.touches[0].clientX); }, { passive:false });
+
+ov.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  ac();
+  const act = b.dataset.act;
+  if (act === 'dlg') advanceDialog();
+  else if (act === 'stage') { sfx.click(); startStage(+b.dataset.i); }
+  else if (act === 'story') { sfx.click(); showDialog(PROLOGUE, showMenu); }
+  else if (act === 'map') { sfx.click(); showMenu(); }
+  else if (act === 'resume') togglePause();
+  else if (act === 'retry') { sfx.click(); beginPlay(); }
+  else if (act === 'next') { sfx.click(); startStage(G.idx + 1); }
+});
+document.getElementById('btnMap').onclick = () => { sfx.click(); showMenu(); };
+document.getElementById('btnSound').onclick = e => {
+  soundOn = !soundOn; e.target.textContent = soundOn ? '🔊 소리 켬' : '🔇 소리 끔'; if (soundOn) sfx.click();
+};
+
+// ===== 게임 로직 =====
+function spawnMonster() {
+  const list = unitList(G.idx);
+  if (Math.random() < 0.08) {
+    const heart = G.hearts < MAX_HEARTS && Math.random() < 0.5;
+    G.items.push({ x: 30 + Math.random() * (W - 90), y: -40, w: 40, h: 40, kind: heart ? 'heart' : 'hint', v: 1.4 });
+  }
+  const needCorrect = !G.monsters.some(m => m.word.w === G.question.w);
+  let word;
+  if (needCorrect || Math.random() < 0.3) word = G.question;
+  else {
+    let tries = 0;
+    do { word = list[rnd(list.length)]; tries++; }
+    while ((word.w === G.question.w || G.monsters.some(m => m.word.w === word.w)) && tries < 10);
+  }
+  ctx.font = `bold 15px ${FONT}`;
+  const w = Math.max(84, Math.min(300, Math.ceil(ctx.measureText(word.w).width) + 24));
+  const amp = Math.min(30, 4 + G.idx);
+  const bx = amp + 6 + Math.random() * (W - w - 2 * (amp + 6));
+  G.monsters.push({
+    word, w, h: 64, bx, x: bx, y: -70, ph: Math.random() * 6.28, amp,
+    v: 0.85 + G.idx * 0.02 + Math.random() * 0.7
+  });
+}
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.28, s = 1 + Math.random() * 4;
+    G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, life: 0.6 + Math.random() * 0.4, max: 1, c: color, s: 2 + Math.random() * 3 });
+  }
+}
+function floater(x, y, text, color) { G.floaters.push({ x, y, text, c: color, life: 1 }); }
+function noteWrong(w) { G.wrong.set(w.w, w); }
+
+function update(dt) {
+  const f = dt * 60;
+  G.t += dt;
+  bgStars.forEach(s => { s.y += s.v * f; if (s.y > H) { s.y = 0; s.x = Math.random() * W; } });
+  if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 30);
+  if (G.flash > 0) G.flash -= dt;
+  if (G.bossHit > 0) G.bossHit -= dt;
+  if (G.mode === 'menu' || !G.parts) return;
+  if (G.paused) return;
+
+  G.parts.forEach(p => { p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.15 * f; p.life -= dt; });
+  G.parts = G.parts.filter(p => p.life > 0);
+  G.floaters.forEach(p => { p.y -= 0.8 * f; p.life -= dt * 0.9; });
+  G.floaters = G.floaters.filter(p => p.life > 0);
+
+  if (G.mode !== 'play') return;
+
+  if ((keys['ArrowLeft'] || keys['KeyA']) && tank.x > 0) tank.x -= tank.speed * f;
+  if ((keys['ArrowRight'] || keys['KeyD']) && tank.x < W - tank.w) tank.x += tank.speed * f;
+  tank.x = Math.max(0, Math.min(W - tank.w, tank.x));
+
+  if (G.ready > 0) { G.ready -= dt; return; }
+  if (G.hint > 0) G.hint -= dt;
+
+  G.spawnT -= dt;
+  if (G.spawnT <= 0) {
+    spawnMonster();
+    G.spawnT = Math.max(0.8, 1.5 - G.idx * 0.015) * (0.7 + Math.random() * 0.6);
+  }
+
+  for (let i = G.bullets.length - 1; i >= 0; i--) {
+    G.bullets[i].y -= G.bullets[i].v * f;
+    if (G.bullets[i].y < -20) G.bullets.splice(i, 1);
+  }
+  G.items.forEach(it => { it.y += it.v * f; });
+  G.monsters.forEach(m => { m.y += m.v * f; m.x = Math.max(2, Math.min(W - m.w - 2, m.bx + Math.sin(G.t * 1.6 + m.ph) * m.amp)); });
+
+  // 총알 vs 아이템
+  for (let bi = G.bullets.length - 1; bi >= 0; bi--) {
+    const b = G.bullets[bi];
+    let used = false;
+    for (let ii = G.items.length - 1; ii >= 0; ii--) {
+      const it = G.items[ii];
+      if (b.x > it.x && b.x < it.x + it.w && b.y > it.y && b.y < it.y + it.h) {
+        if (it.kind === 'heart') { G.hearts = Math.min(MAX_HEARTS, G.hearts + 1); floater(it.x, it.y, '❤️ +1', '#ff7675'); }
+        else { G.hint = 6; floater(it.x, it.y, '💡 정답이 반짝!', '#f9ca24'); }
+        burst(it.x + 20, it.y + 20, '#f9ca24', 14); sfx.item();
+        G.items.splice(ii, 1); G.bullets.splice(bi, 1); used = true; updateHud();
+        break;
+      }
+    }
+    if (used) continue;
+    // 총알 vs 몬스터
+    for (let mi = G.monsters.length - 1; mi >= 0; mi--) {
+      const m = G.monsters[mi];
+      if (b.x > m.x && b.x < m.x + m.w && b.y > m.y && b.y < m.y + m.h) {
+        G.bullets.splice(bi, 1);
+        G.monsters.splice(mi, 1);
+        hitMonster(m);
+        break;
+      }
+    }
+    if (G.mode !== 'play') return;
+  }
+
+  // 바닥 도달
+  for (let mi = G.monsters.length - 1; mi >= 0; mi--) {
+    const m = G.monsters[mi];
+    if (m.y > H - 20) {
+      G.monsters.splice(mi, 1);
+      if (m.word.w === G.question.w) {
+        G.hearts--; G.lost++; G.combo = 0; G.shake = 10;
+        noteWrong(G.question);
+        floater(m.x + m.w / 2, H - 70, '💔 놓쳤다!', '#ff7675');
+        sfx.hurt(); updateHud();
+        if (G.hearts <= 0) { gameOver(); return; }
+      }
+    }
+  }
+  for (let ii = G.items.length - 1; ii >= 0; ii--) if (G.items[ii].y > H) G.items.splice(ii, 1);
+}
+
+function hitMonster(m) {
+  const cx = m.x + m.w / 2, cy = m.y + 30;
+  if (m.word.w === G.question.w) {
+    G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+    const mult = Math.min(5, 1 + Math.floor(G.combo / 3));
+    const pts = 10 * mult;
+    G.score += pts; G.kills++; G.bossHit = 0.35;
+    burst(cx, cy, '#f1c40f', 22);
+    floater(cx, cy, '+' + pts + (mult > 1 ? ' x' + mult : ''), '#f1c40f');
+    sfx.good();
+    G.monsters = G.monsters.filter(o => o.word.w !== G.question.w || false);
+    if (G.kills >= G.need) { updateHud(); win(); return; }
+    nextQuestion();
+    G.spawnT = Math.min(G.spawnT, 0.4);
+  } else {
+    G.combo = 0; G.score = Math.max(0, G.score - 5); G.shake = 5;
+    noteWrong(G.question);
+    burst(cx, cy, '#e74c3c', 14);
+    floater(cx, cy, '✗ 오답! -5', '#ff7675');
+    sfx.bad();
+  }
+  updateHud();
+}
+
+function win() {
+  G.mode = 'clear'; G.bossDead = true; G.shake = 12;
+  G.monsters = []; G.bullets = []; G.items = [];
+  burst(W / 2, 100, '#f1c40f', 60); burst(W / 2, 100, '#ff7675', 40);
+  sfx.win();
+  const st = G.lost === 0 ? 3 : (G.lost <= 2 ? 2 : 1);
+  starsSaved[G.idx] = Math.max(starsSaved[G.idx] || 0, st);
+  saveJSON('vocabTankStars', starsSaved);
+  const ses = G.session, c = CH[G.idx];
+  setTimeout(() => {
+    if (ses !== G.session) return;
+    const lines = [
+      { e:c.boss, n:c.bn, text:c.ol },
+      { e:'🧒', n:'토리 (조종사)', text:`${c.t}의 단어 결정을 되찾았다! 다음 지역으로 출발!` }
+    ];
+    if (G.idx === 34) lines.push(...EPILOGUE);
+    showDialog(lines, () => showResult(true, st));
+  }, 1400);
+}
+function gameOver() {
+  G.mode = 'over'; sfx.lose();
+  const ses = G.session, c = CH[G.idx];
+  setTimeout(() => {
+    if (ses !== G.session) return;
+    setOverlay(`<div class="panel"><h2>💥 탱크가 쓰러졌다...</h2><p>${c.boss} ${esc(c.bn)}: "하하하! 단어는 영원히 내 거다!"</p><p>점수 ${G.score} · 보스 체력 ${G.need - G.kills}/${G.need} 남음</p>${reviewHtml()}<div class="btns"><button class="btn-primary" data-act="retry">🔁 다시 도전</button><button data-act="map">🗺️ 지도로</button></div></div>`, 'center');
+  }, 700);
+}
+function reviewHtml() {
+  if (!G.wrong.size) return '<p>👑 실수 없이 클리어! 단어 마스터!</p>';
+  let li = '';
+  G.wrong.forEach(w => { li += `<li><strong>${esc(w.w)}</strong> — ${esc(w.m)}</li>`; });
+  return `<div class="review"><h3>📝 복습 노트 (헷갈린 단어)</h3><ul style="margin:0;padding-left:18px">${li}</ul></div>`;
+}
+function showResult(ok, st) {
+  const c = CH[G.idx];
+  const last = G.idx === 34;
+  setOverlay(`<div class="panel"><h2>🎉 ${esc(c.t)} 해방!</h2><div class="stars">${starStr(st)}</div><p>점수 ${G.score} · 최고 콤보 ${G.maxCombo} · 남은 하트 ${G.hearts}/${MAX_HEARTS}</p>${reviewHtml()}<div class="btns">${last ? '' : '<button class="btn-primary" data-act="next">다음 지역 ▶</button>'}<button data-act="retry">🔁 다시 하기</button><button data-act="map">🗺️ 지도로</button></div></div>`, 'center');
+}
+
+// ===== 그리기 =====
+function drawBoss() {
+  if (G.bossDead) return;
+  const c = CH[G.idx];
+  const hurt = G.bossHit > 0;
+  const bx = W / 2 + (hurt ? (Math.random() - 0.5) * 10 : 0);
+  const by = 104 + Math.sin(G.t * 2) * 6;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `62px ${FONT}`;
+  if (hurt) ctx.globalAlpha = 0.55 + 0.45 * Math.sin(G.t * 60);
+  ctx.fillText(c.boss, bx, by);
+  ctx.restore();
+  // 체력바
+  const ratio = Math.max(0, (G.need - G.kills) / G.need);
+  ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(W / 2 - 112, 140, 224, 14, 7); ctx.fill();
+  ctx.fillStyle = ratio > 0.5 ? '#e74c3c' : (ratio > 0.25 ? '#e67e22' : '#f1c40f');
+  if (ratio > 0) { rr(W / 2 - 110, 142, 220 * ratio, 10, 5); ctx.fill(); }
+  ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${c.bn}  ${G.need - G.kills}/${G.need}`, W / 2, 166);
+}
+function drawTank() {
+  const x = tank.x, y = tank.y;
+  ctx.fillStyle = '#16231d'; rr(x - 3, y + 14, tank.w + 6, 16, 8); ctx.fill();
+  ctx.fillStyle = '#4b5d52';
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(x + 6 + i * 11, y + 22, 4.5, 0, 6.28); ctx.fill(); }
+  ctx.fillStyle = '#2ecc71'; rr(x + 3, y + 2, tank.w - 6, 18, 6); ctx.fill();
+  ctx.fillStyle = '#27ae60'; rr(x + tank.w / 2 - 13, y - 8, 26, 16, 6); ctx.fill();
+  ctx.fillStyle = '#1e8449'; ctx.fillRect(x + tank.w / 2 - 3, y - 26, 6, 20);
+  ctx.font = `14px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🧒', x + tank.w / 2, y + 1);
+  if (G.flash > 0) {
+    ctx.fillStyle = '#f9e79f'; ctx.beginPath(); ctx.arc(x + tank.w / 2, y - 28, 9, 0, 6.28); ctx.fill();
+  }
+}
+function drawMonster(m) {
+  const c = CH[G.idx], cx = m.x + m.w / 2;
+  const isAns = m.word.w === G.question.w;
+  const glow = G.hint > 0 && isAns;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `36px ${FONT}`;
+  ctx.fillText(c.mob, cx, m.y + 18 + Math.sin(G.t * 4 + m.ph) * 3);
+  if (glow) { ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 18 + 8 * Math.sin(G.t * 10); }
+  ctx.fillStyle = '#243447'; rr(m.x, m.y + 38, m.w, 26, 9); ctx.fill();
+  ctx.lineWidth = glow ? 3 : 2; ctx.strokeStyle = glow ? '#f1c40f' : '#6c7f93'; ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fff'; ctx.font = `bold 15px ${FONT}`;
+  ctx.fillText(m.word.w, cx, m.y + 52);
+  if (glow) { ctx.font = `18px ${FONT}`; ctx.fillText('🎯', cx, m.y - 8); }
+  ctx.restore();
+}
+function draw() {
+  const hue = (G.idx * 37) % 360;
+  ctx.save();
+  if (G.shake > 0) ctx.translate((Math.random() - 0.5) * G.shake, (Math.random() - 0.5) * G.shake);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, `hsl(${hue},55%,9%)`); g.addColorStop(1, `hsl(${(hue + 40) % 360},45%,22%)`);
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
+  ctx.fillStyle = '#fff';
+  bgStars.forEach(s => { ctx.globalAlpha = 0.3 + s.s / 3; ctx.fillRect(s.x, s.y, s.s, s.s); });
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `hsl(${hue},35%,12%)`; ctx.fillRect(-20, 472, W + 40, 40);
+  ctx.fillStyle = `hsl(${hue},50%,35%)`; ctx.fillRect(-20, 472, W + 40, 3);
+
+  if (G.mode !== 'menu' && G.monsters) {
+    drawBoss();
+    G.monsters.forEach(drawMonster);
+    G.items.forEach(it => {
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(it.x + 20, it.y + 20, 22, 0, 6.28); ctx.fill();
+      ctx.font = `28px ${FONT}`; ctx.fillStyle = '#fff';
+      ctx.fillText(it.kind === 'heart' ? '❤️' : '💡', it.x + 20, it.y + 21);
+    });
+    G.bullets.forEach(b => {
+      ctx.shadowColor = '#f9e79f'; ctx.shadowBlur = 12;
+      ctx.fillStyle = '#f9e79f'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.28); ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+    if (G.mode === 'play' || G.mode === 'clear' || G.mode === 'over' || G.mode === 'dialog') drawTank();
+    G.parts.forEach(p => {
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 0.6)); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, p.s, p.s);
+    });
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    G.floaters.forEach(p => {
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life)); ctx.fillStyle = p.c; ctx.font = `bold 20px ${FONT}`;
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText(p.text, p.x, p.y); ctx.fillText(p.text, p.x, p.y);
+    });
+    ctx.globalAlpha = 1;
+    if (G.mode === 'play' && G.ready > 0) {
+      const txt = G.ready > 1.6 ? '준비!' : (G.ready > 0.8 ? '조준!' : '발사!');
+      ctx.font = `bold 56px ${FONT}`; ctx.fillStyle = '#f1c40f'; ctx.strokeStyle = '#000'; ctx.lineWidth = 6;
+      ctx.strokeText(txt, W / 2, 280); ctx.fillText(txt, W / 2, 280);
+    }
+  }
+  ctx.restore();
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+
+// ===== 단어 공부 / CSV =====
+function setStudyUnit(i) {
+  document.getElementById('studySelect').value = String(i);
+  renderWordTable(i);
+}
+function renderWordTable(i) {
+  const body = document.getElementById('wordListBody');
+  body.innerHTML = '';
+  unitList(i).forEach((it, n) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${n + 1}</td><td><strong>${esc(it.w)}</strong></td><td>${esc(it.m)}</td>`;
+    body.appendChild(tr);
+  });
+}
+function downloadCSV() {
+  const i = +document.getElementById('studySelect').value;
+  let csv = '﻿단어(Word),뜻(Meaning)\n';
+  unitList(i).forEach(r => { csv += `"${r.w.replace(/"/g, '""')}","${r.m.replace(/"/g, '""')}"\n`; });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  link.download = `Unit_${i + 1}_단어장.csv`;
+  link.click();
+}
+
+window.addEventListener('load', () => {
+  const sel = document.getElementById('studySelect');
+  for (let i = 0; i < 35; i++) {
+    const o = document.createElement('option');
+    o.value = String(i); o.textContent = `Unit ${i + 1} · ${CH[i].t} (${unitList(i).length}단어)`;
+    sel.appendChild(o);
+  }
+  sel.addEventListener('change', () => { renderWordTable(+sel.value); sel.blur(); });
+  document.getElementById('btnCsv').onclick = downloadCSV;
+  renderWordTable(0);
+  requestAnimationFrame(loop);
+  if (!loadJSON('vocabTankSeen', false)) {
+    saveJSON('vocabTankSeen', true);
+    showDialog(PROLOGUE, showMenu);
+  } else showMenu();
+});
+</script>
+</body>
+</html>
