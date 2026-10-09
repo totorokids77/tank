@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>하이퍼 탱크 스트라이크 - 모바일 지원 버전</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #ffffff;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            overflow: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, #0f172a, #020617);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.15);
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .weapon-slot {
+            transition: all 0.2s ease;
+        }
+        .weapon-slot.active {
+            border-color: #06b6d4;
+            background-color: rgba(6, 182, 212, 0.3);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+        }
+
+        /* Virtual Joystick Styling */
+        #joystickContainer {
+            touch-action: none;
+        }
+        #joystickKnob {
+            transition: transform 0.05s ease-out;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-1 sm:p-4 bg-slate-950 text-slate-100">
+
+    <div class="relative w-full max-w-6xl h-[95vh] sm:h-[92vh] flex flex-col justify-between items-center rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl">
+        
+        <!-- TOP HUD Overlay -->
+        <div id="hud" class="absolute top-0 left-0 w-full p-2 sm:p-4 z-10 flex justify-between items-center bg-gradient-to-b from-slate-950/90 to-transparent pointer-events-none">
+            <!-- Player HP Bar -->
+            <div class="flex flex-col gap-1 w-36 sm:w-56">
+                <div class="flex justify-between text-[10px] sm:text-xs font-bold font-orbitron tracking-wider text-cyan-400">
+                    <span><i class="fa-solid fa-shield-halved mr-1"></i> HP</span>
+                    <span id="hpText">100 / 100</span>
+                </div>
+                <div class="w-full h-2.5 sm:h-3.5 bg-slate-800/80 rounded-full overflow-hidden p-0.5 border border-cyan-500/30">
+                    <div id="hpBar" class="h-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-blue-500 rounded-full transition-all duration-200" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- Score & Stage Info -->
+            <div class="flex items-center gap-3 sm:gap-6">
+                <div class="text-center">
+                    <div class="text-[9px] sm:text-[10px] text-slate-400 uppercase font-orbitron">단계</div>
+                    <div id="levelDisplay" class="text-base sm:text-2xl font-black font-orbitron text-cyan-400">1단계</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[9px] sm:text-[10px] text-slate-400 uppercase font-orbitron">점수</div>
+                    <div id="scoreDisplay" class="text-base sm:text-2xl font-black font-orbitron text-amber-400">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WEAPON HUD -->
+        <div id="weaponHud" class="absolute top-12 sm:top-auto sm:bottom-3 left-1/2 transform -translate-x-1/2 z-10 flex gap-1 sm:gap-2 p-1 sm:p-2 rounded-xl bg-slate-950/80 border border-slate-800 pointer-events-auto">
+            <div id="wSlot1" class="weapon-slot active flex flex-col items-center p-1 sm:p-2 rounded-lg border border-slate-700 w-12 sm:w-16 cursor-pointer" onclick="selectWeapon(1)">
+                <span class="text-[9px] sm:text-[10px] font-orbitron font-bold text-slate-400">[1]</span>
+                <i class="fa-solid fa-bullseye text-cyan-400 my-0.5 text-xs sm:text-base"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold">주포</span>
+            </div>
+            <div id="wSlot2" class="weapon-slot flex flex-col items-center p-1 sm:p-2 rounded-lg border border-slate-700 w-12 sm:w-16 cursor-pointer" onclick="selectWeapon(2)">
+                <span class="text-[9px] sm:text-[10px] font-orbitron font-bold text-slate-400">[2]</span>
+                <i class="fa-solid fa-rocket text-amber-400 my-0.5 text-xs sm:text-base"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold">이타노</span>
+            </div>
+            <div id="wSlot3" class="weapon-slot flex flex-col items-center p-1 sm:p-2 rounded-lg border border-slate-700 w-12 sm:w-16 cursor-pointer" onclick="selectWeapon(3)">
+                <span class="text-[9px] sm:text-[10px] font-orbitron font-bold text-slate-400">[3]</span>
+                <i class="fa-solid fa-burst text-orange-400 my-0.5 text-xs sm:text-base"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold">발칸</span>
+            </div>
+            <div id="wSlot4" class="weapon-slot flex flex-col items-center p-1 sm:p-2 rounded-lg border border-slate-700 w-12 sm:w-16 cursor-pointer" onclick="selectWeapon(4)">
+                <span class="text-[9px] sm:text-[10px] font-orbitron font-bold text-slate-400">[4]</span>
+                <i class="fa-solid fa-bolt text-purple-400 my-0.5 text-xs sm:text-base"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold">레이저</span>
+            </div>
+            <div id="wSlot5" class="weapon-slot flex flex-col items-center p-1 sm:p-2 rounded-lg border border-slate-700 w-12 sm:w-16 cursor-pointer" onclick="selectWeapon(5)">
+                <span class="text-[9px] sm:text-[10px] font-orbitron font-bold text-slate-400">[5]</span>
+                <i class="fa-solid fa-atom text-rose-500 my-0.5 text-xs sm:text-base"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold">핵로켓</span>
+            </div>
+        </div>
+
+        <!-- BOSS HP BAR OVERLAY -->
+        <div id="bossHud" class="absolute top-24 sm:top-16 left-1/2 transform -translate-x-1/2 w-3/4 max-w-xl z-10 hidden pointer-events-none">
+            <div class="flex justify-between items-center mb-1 text-[10px] sm:text-xs font-black font-orbitron text-red-500 uppercase">
+                <span id="bossNameTitle">거대 보스</span>
+                <span id="bossHpText">100%</span>
+            </div>
+            <div class="w-full h-3 sm:h-4 bg-slate-900/90 rounded-full border border-red-600 p-0.5 shadow-lg">
+                <div id="bossHpBar" class="h-full bg-gradient-to-r from-orange-600 via-red-500 to-rose-700 rounded-full transition-all duration-150" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- MOBILE TOUCH CONTROLS (Virtual Joystick & Fire Button) -->
+        <div id="mobileControls" class="absolute inset-0 z-10 pointer-events-none flex justify-between items-end p-4 sm:hidden">
+            <!-- Virtual Joystick -->
+            <div id="joystickContainer" class="pointer-events-auto relative w-28 h-28 bg-slate-900/60 rounded-full border border-slate-700 flex items-center justify-center">
+                <div id="joystickKnob" class="w-12 h-12 bg-cyan-500/80 rounded-full border border-cyan-300 shadow-md"></div>
+            </div>
+
+            <!-- Fire Button -->
+            <button id="mobileFireBtn" class="pointer-events-auto w-20 h-20 bg-rose-600/80 active:bg-rose-500 border-2 border-rose-300 rounded-full flex items-center justify-center text-white font-black text-xs font-orbitron shadow-lg active:scale-95 transition-all">
+                FIRE
+            </button>
+        </div>
+
+        <!-- Canvas -->
+        <canvas id="gameCanvas" class="w-full h-full block rounded-2xl"></canvas>
+
+        <!-- START MENU OVERLAY -->
+        <div id="startMenu" class="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 glass-panel">
+            <div class="max-w-md w-full text-center space-y-4">
+                <h1 class="text-3xl sm:text-5xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-200 to-amber-400">
+                    HYPER TANK
+                </h1>
+                <p class="text-slate-300 text-xs sm:text-sm">
+                    PC 키보드/마우스 및 모바일 가상 조이스틱 터치를 모두 지원합니다.
+                </p>
+
+                <!-- Level Select -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-orbitron text-cyan-400 font-bold">난이도 선택 (1~10단계)</label>
+                    <div id="levelGrid" class="grid grid-cols-5 gap-1.5 max-w-xs mx-auto"></div>
+                </div>
+
+                <button id="startBtn" class="w-full sm:w-64 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-black font-orbitron text-base shadow-lg">
+                    작전 개시 (START)
+                </button>
+            </div>
+        </div>
+
+        <!-- END OVERLAY -->
+        <div id="endMenu" class="absolute inset-0 z-30 hidden flex-col items-center justify-center p-6 glass-panel">
+            <div class="max-w-md w-full text-center space-y-4">
+                <h2 id="endTitle" class="text-3xl font-black font-orbitron text-red-500">MISSION FAILED</h2>
+                <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1 font-orbitron text-xs">
+                    <div class="flex justify-between"><span class="text-slate-400">단계</span><span id="finalLevel" class="text-cyan-400">1단계</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">점수</span><span id="finalScore" class="text-amber-400">0</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">격파</span><span id="finalKills" class="text-emerald-400">0</span></div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="restartBtn" class="flex-1 py-2.5 rounded-lg bg-cyan-500 text-slate-950 font-black font-orbitron text-xs">다시 시도</button>
+                    <button id="menuBtn" class="flex-1 py-2.5 rounded-lg bg-slate-800 text-slate-200 font-bold font-orbitron text-xs">메뉴로</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        class SoundEffects {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playCannon() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+            }
+            playExplosion() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.3;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource(); noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, this.ctx.currentTime);
+                const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start();
+            }
+        }
+
+        const sound = new SoundEffects();
+
+        const LEVEL_CONFIGS = {
+            1: { name: '1단계', enemyHp: 40, spawnRate: 120, maxEnemies: 15, types: ['scopedog'], boss: false },
+            2: { name: '2단계', enemyHp: 60, spawnRate: 100, maxEnemies: 20, types: ['scopedog', 'valkyrie'], boss: false },
+            3: { name: '3단계', enemyHp: 80, spawnRate: 90, maxEnemies: 25, types: ['scopedog', 'valkyrie', 'gundam'], boss: false },
+            4: { name: '4단계', enemyHp: 110, spawnRate: 80, maxEnemies: 30, types: ['scopedog', 'gundam'], boss: false },
+            5: { name: '5단계', enemyHp: 150, spawnRate: 70, maxEnemies: 35, types: ['valkyrie', 'gundam'], boss: false },
+            6: { name: '6단계', enemyHp: 200, spawnRate: 65, maxEnemies: 40, types: ['scopedog'], boss: true, bossType: 'bossScopedog', bossHp: 1500 },
+            7: { name: '7단계', enemyHp: 240, spawnRate: 55, maxEnemies: 45, types: ['valkyrie', 'gundam'], boss: false },
+            8: { name: '8단계', enemyHp: 300, spawnRate: 45, maxEnemies: 50, types: ['gundam'], boss: false },
+            9: { name: '9단계', enemyHp: 380, spawnRate: 35, maxEnemies: 60, types: ['scopedog', 'valkyrie', 'gundam'], boss: false },
+            10: { name: '10단계', enemyHp: 500, spawnRate: 30, maxEnemies: 80, types: ['valkyrie', 'gundam'], boss: true, bossType: 'bossGundam', bossHp: 4500 }
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let selectedLevel = 1, currentLevel = 1, isGameRunning = false, isPaused = false;
+        let score = 0, enemiesKilled = 0, waveEnemiesSpawned = 0, waveTotalEnemies = 0, frameCount = 0;
+        let selectedWeapon = 1;
+
+        const aimPos = { x: 0, y: 0 };
+        const keys = { w: false, a: false, s: false, d: false };
+        const touchVector = { x: 0, y: 0 };
+
+        class PlayerTank {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.radius = 20; this.speed = 4;
+                this.maxHp = 100; this.hp = 100; this.turretAngle = 0; this.cooldown = 0;
+            }
+
+            update() {
+                let dx = 0, dy = 0;
+                if (keys.w) dy -= 1; if (keys.s) dy += 1;
+                if (keys.a) dx -= 1; if (keys.d) dx += 1;
+
+                // Apply Touch Joystick vector if moving via mobile
+                if (touchVector.x !== 0 || touchVector.y !== 0) {
+                    dx = touchVector.x;
+                    dy = touchVector.y;
+                } else if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071; dy *= 0.7071;
+                }
+
+                this.x = Math.max(this.radius + 10, Math.min(canvas.width - this.radius - 10, this.x + dx * this.speed));
+                this.y = Math.max(this.radius + 10, Math.min(canvas.height - this.radius - 10, this.y + dy * this.speed));
+
+                this.turretAngle = Math.atan2(aimPos.y - this.y, aimPos.x - this.x);
+                if (this.cooldown > 0) this.cooldown--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = '#334155'; ctx.fillRect(-22, -18, 8, 36); ctx.fillRect(14, -18, 8, 36);
+                ctx.fillStyle = '#0284c7'; ctx.beginPath(); ctx.roundRect(-18, -14, 36, 28, 6); ctx.fill();
+                ctx.rotate(this.turretAngle);
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(0, -4, 28, 8);
+                ctx.fillStyle = '#0369a1'; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+
+            shoot() {
+                if (this.cooldown > 0) return;
+                const startX = this.x + Math.cos(this.turretAngle) * 28;
+                const startY = this.y + Math.sin(this.turretAngle) * 28;
+
+                bullets.push(new WeaponBullet(startX, startY, this.turretAngle, 12, 45, '#38bdf8', true));
+                sound.playCannon();
+                this.cooldown = selectedWeapon === 3 ? 6 : 18;
+            }
+        }
+
+        class WeaponBullet {
+            constructor(x, y, angle, speed, damage, color, isPlayer = false) {
+                this.x = x; this.y = y; this.angle = angle; this.speed = speed;
+                this.damage = damage; this.color = color; this.isPlayer = isPlayer;
+                this.radius = 4; this.markedForDeletion = false;
+            }
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(type, config) {
+                this.type = type; this.markedForDeletion = false;
+                this.hp = config.enemyHp; this.maxHp = this.hp; this.speed = 2; this.radius = 18;
+                this.color = type === 'valkyrie' ? '#38bdf8' : (type === 'gundam' ? '#ef4444' : '#65a30d');
+                this.x = Math.random() < 0.5 ? -30 : canvas.width + 30;
+                this.y = Math.random() * canvas.height;
+                this.shootCooldown = Math.floor(Math.random() * 60) + 40;
+            }
+            update() {
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+                this.shootCooldown--;
+                if (this.shootCooldown <= 0) {
+                    bullets.push(new WeaponBullet(this.x, this.y, angle, 6, 10, '#f97316', false));
+                    this.shootCooldown = 90;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let player = new PlayerTank(0, 0);
+        let bullets = [], enemies = [];
+
+        function selectWeapon(slot) {
+            selectedWeapon = slot;
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`wSlot${i}`).classList.toggle('active', i === slot);
+            }
+        }
+
+        function setupControls() {
+            window.addEventListener('keydown', e => {
+                if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
+                if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
+                if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
+                if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+            });
+            window.addEventListener('keyup', e => {
+                if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
+                if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = false;
+                if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = false;
+                if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = false;
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                const rect = canvas.getBoundingClientRect();
+                aimPos.x = e.clientX - rect.left;
+                aimPos.y = e.clientY - rect.top;
+            });
+
+            canvas.addEventListener('mousedown', () => { sound.init(); if (isGameRunning) player.shoot(); });
+
+            // Virtual Joystick Logic
+            const joystick = document.getElementById('joystickContainer');
+            const knob = document.getElementById('joystickKnob');
+            let joystickActive = false;
+
+            joystick.addEventListener('touchstart', e => {
+                joystickActive = true;
+                sound.init();
+            }, { passive: true });
+
+            window.addEventListener('touchmove', e => {
+                if (!joystickActive) return;
+                const rect = joystick.getBoundingClientRect();
+                const touch = e.touches[0];
+                let dx = touch.clientX - (rect.left + rect.width / 2);
+                let dy = touch.clientY - (rect.top + rect.height / 2);
+                const dist = Math.hypot(dx, dy);
+                const maxDist = rect.width / 2;
+
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                touchVector.x = dx / maxDist;
+                touchVector.y = dy / maxDist;
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                joystickActive = false;
+                knob.style.transform = 'translate(0px, 0px)';
+                touchVector.x = 0; touchVector.y = 0;
+            });
+
+            // Mobile Fire Button
+            const fireBtn = document.getElementById('mobileFireBtn');
+            fireBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                sound.init();
+                if (isGameRunning) player.shoot();
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            aimPos.x = canvas.width / 2;
+            aimPos.y = canvas.height / 2;
+        }
+
+        function initLevelGrid() {
+            const grid = document.getElementById('levelGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.createElement('button');
+                btn.className = `p-1 rounded font-orbitron text-[10px] ${selectedLevel === i ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}`;
+                btn.innerText = `${i}단계`;
+                btn.onclick = () => { selectedLevel = i; initLevelGrid(); };
+                grid.appendChild(btn);
+            }
+        }
+
+        function startGame(level = selectedLevel) {
+            sound.init();
+            currentLevel = level;
+            const config = LEVEL_CONFIGS[currentLevel];
+            resizeCanvas();
+
+            player = new PlayerTank(canvas.width / 2, canvas.height / 2);
+            bullets = []; enemies = []; score = 0; enemiesKilled = 0; waveEnemiesSpawned = 0; waveTotalEnemies = config.maxEnemies;
+
+            isGameRunning = true;
+            document.getElementById('startMenu').classList.add('hidden');
+            document.getElementById('endMenu').classList.add('hidden');
+        }
+
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            if (!isGameRunning) return;
+
+            frameCount++;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            player.update(); player.draw();
+
+            // Spawn Enemies
+            const config = LEVEL_CONFIGS[currentLevel];
+            if (waveEnemiesSpawned < waveTotalEnemies && frameCount % config.spawnRate === 0) {
+                enemies.push(new Enemy('scopedog', config));
+                waveEnemiesSpawned++;
+            }
+
+            bullets.forEach(b => b.update()); bullets = bullets.filter(b => !b.markedForDeletion); bullets.forEach(b => b.draw());
+            enemies.forEach(e => e.update()); enemies = enemies.filter(e => !e.markedForDeletion); enemies.forEach(e => e.draw());
+
+            // Collisions
+            bullets.forEach(b => {
+                if (b.isPlayer) {
+                    enemies.forEach(e => {
+                        if (Math.hypot(b.x - e.x, b.y - e.y) < b.radius + e.radius) {
+                            b.markedForDeletion = true; e.markedForDeletion = true;
+                            sound.playExplosion(); score += 100; enemiesKilled++;
+                        }
+                    });
+                } else {
+                    if (Math.hypot(b.x - player.x, b.y - player.y) < b.radius + player.radius) {
+                        b.markedForDeletion = true; player.hp -= b.damage;
+                        if (player.hp <= 0) {
+                            isGameRunning = false;
+                            document.getElementById('endMenu').classList.remove('hidden');
+                            document.getElementById('endMenu').classList.add('flex');
+                        }
+                    }
+                }
+            });
+
+            // HUD
+            document.getElementById('hpBar').style.width = `${Math.max(0, player.hp)}%`;
+            document.getElementById('hpText').innerText = `${Math.ceil(player.hp)} / 100`;
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('levelDisplay').innerText = `${currentLevel}단계`;
+        }
+
+        window.onload = () => {
+            setupControls(); initLevelGrid(); resizeCanvas();
+            document.getElementById('startBtn').onclick = () => startGame(selectedLevel);
+            document.getElementById('restartBtn').onclick = () => startGame(currentLevel);
+            document.getElementById('menuBtn').onclick = () => {
+                document.getElementById('endMenu').classList.add('hidden');
+                document.getElementById('startMenu').classList.remove('hidden');
+            };
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
